@@ -1,0 +1,28 @@
+{
+  "name": "tower-stacker",
+  "version": "0.1.0",
+  "description": "타워스테커 - 블록을 쌓아 올리는 모바일 웹 게임",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "game",
+    "mobile",
+    "web",
+    "phaser",
+    "physics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.80.1",
+    "lz-string": "^1.5.0",
+    "crypto-js": "^4.2.0",
+    "gif.js": "^0.2.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
