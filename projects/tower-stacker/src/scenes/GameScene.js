@@ -433,6 +433,23 @@ class GameScene extends Phaser.Scene {
 
         // 코인 계산
         const earnedCoins = this.calculateEarnedCoins();
+        const specialBlockCount = this.blocks.filter(b => b.type !== 'normal').length;
+
+        // 통계 업데이트
+        const updates = {
+            maxHeight: this.currentHeight,
+            totalBlocks: this.blockCount,
+            specialBlocks: specialBlockCount,
+            coinsEarned: earnedCoins,
+            gamesPlayed: 1
+        };
+
+        // 퍼즐 모드라면 스테이지 정보 추가
+        if (this.gameMode === 'puzzle' && this.currentStage) {
+            updates.puzzleStage = this.currentStage;
+        }
+
+        window.dataManager.updateStatistics(updates);
 
         // 게임 오버 씬으로 전환
         this.time.delayedCall(1000, () => {
@@ -443,7 +460,7 @@ class GameScene extends Phaser.Scene {
                 earnedCoins: earnedCoins,
                 height: this.currentHeight,
                 blockCount: this.blockCount,
-                specialBlockCount: this.blocks.filter(b => b.type !== 'normal').length
+                specialBlockCount: specialBlockCount
             });
         });
     }

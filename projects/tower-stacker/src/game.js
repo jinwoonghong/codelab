@@ -11,7 +11,8 @@ const config = {
         MainMenuScene,
         GameScene,
         GameOverScene,
-        ShopScene
+        ShopScene,
+        MuseumScene
     ]
 };
 
