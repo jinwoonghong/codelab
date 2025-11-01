@@ -29,12 +29,22 @@ class MainMenuScene extends Phaser.Scene {
         });
         subtitle.setOrigin(0.5);
 
+        // 코인 잔액 표시 (우측 상단)
+        const coins = window.dataManager.getCoins();
+        const coinText = this.add.text(width - 20, 20, `💰 ${coins}`, {
+            font: 'bold 24px Arial',
+            fill: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 2
+        });
+        coinText.setOrigin(1, 0);
+
         // 게임 모드 버튼들
         const modes = [
-            { key: 'classic', label: '클래식 모드', y: 250 },
-            { key: 'timeAttack', label: '타임 어택', y: 330 },
-            { key: 'dailyChallenge', label: '일일 도전', y: 410 },
-            { key: 'puzzle', label: '퍼즐 모드', y: 490 }
+            { key: 'classic', label: '클래식 모드', y: 230 },
+            { key: 'timeAttack', label: '타임 어택', y: 300 },
+            { key: 'dailyChallenge', label: '일일 도전', y: 370 },
+            { key: 'puzzle', label: '퍼즐 모드', y: 440 }
         ];
 
         modes.forEach(mode => {
@@ -43,10 +53,17 @@ class MainMenuScene extends Phaser.Scene {
             });
         });
 
+        // 상점 버튼
+        const shopButton = this.createButton(width / 2, 520, '🎁 블록 스킨 상점', () => {
+            this.scene.start('ShopScene');
+        });
+        shopButton.scaleX = 0.9;
+        shopButton.scaleY = 0.9;
+
         // 최고 기록 표시 (IndexedDB에서 불러오기)
         const highScore = await this.getHighScore('classic');
-        const highScoreText = this.add.text(width / 2, height - 50, `클래식 최고 기록: ${highScore}`, {
-            font: '18px Arial',
+        const highScoreText = this.add.text(width / 2, height - 30, `클래식 최고 기록: ${highScore}`, {
+            font: '16px Arial',
             fill: '#FFE66D'
         });
         highScoreText.setOrigin(0.5);
