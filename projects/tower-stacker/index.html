@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>타워 스태커 - Tower Stacker</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Phaser 게임 캔버스가 여기에 렌더링됩니다 -->
+    </div>
+
+    <!-- Phaser 3 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+
+    <!-- 외부 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js"></script>
+
+    <!-- 게임 설정 -->
+    <script src="src/config.js"></script>
+
+    <!-- 유틸리티 -->
+    <script src="src/utils/DataManager.js"></script>
+
+    <!-- 매니저 -->
+    <script src="src/managers/ScoreManager.js"></script>
+    <script src="src/managers/ReplayManager.js"></script>
+    <script src="src/managers/GifManager.js"></script>
+
+    <!-- 엔티티 -->
+    <script src="src/entities/Block.js"></script>
+    <script src="src/entities/SpecialBlocks.js"></script>
+
+    <!-- 씬 -->
+    <script src="src/scenes/BootScene.js"></script>
+    <script src="src/scenes/MainMenuScene.js"></script>
+    <script src="src/scenes/GameScene.js"></script>
+    <script src="src/scenes/GameOverScene.js"></script>
+
+    <!-- 메인 게임 파일 -->
+    <script src="src/game.js"></script>
+</body>
+</html>
