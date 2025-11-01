@@ -13,8 +13,8 @@ const GameConfig = {
     physics: {
         default: 'matter',
         matter: {
-            gravity: { y: 1 },
-            debug: false,
+            gravity: { y: 0.8 },
+            debug: false, // true로 설정하면 물리 바디 보임
             debugBodyColor: 0x00ff00
         }
     },
@@ -52,9 +52,9 @@ const GameConfig = {
             width: 80,
             height: 40,
             colors: ['0xFF6B6B', '0x4ECDC4', '0xFFE66D', '0x95E1D3', '0xF38181'],
-            friction: 0.8,
-            restitution: 0.3,
-            density: 0.001
+            friction: 0.9,       // 마찰력 증가 (더 안정적)
+            restitution: 0.1,    // 반발력 감소 (덜 튕김)
+            density: 0.002       // 밀도 증가 (조금 더 무거움)
         },
 
         // 특수 블록 등장 확률

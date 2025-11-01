@@ -10,7 +10,7 @@ class GameOverScene extends Phaser.Scene {
         this.finalScore = data.score || 0;
     }
 
-    create() {
+    async create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
@@ -27,15 +27,15 @@ class GameOverScene extends Phaser.Scene {
         gameOverText.setOrigin(0.5);
 
         // 최종 점수
-        const scoreText = this.add.text(width / 2, height / 2 - 40, `최종 높이: ${this.finalScore}m`, {
+        const scoreText = this.add.text(width / 2, height / 2 - 40, `최종 점수: ${this.finalScore}`, {
             font: 'bold 32px Arial',
             fill: '#FFE66D'
         });
         scoreText.setOrigin(0.5);
 
-        // 최고 기록 (임시)
-        const highScore = this.getHighScore();
-        const highScoreText = this.add.text(width / 2, height / 2 + 20, `최고 기록: ${highScore}m`, {
+        // 최고 기록 (IndexedDB에서 불러오기)
+        const highScore = await this.getHighScore();
+        const highScoreText = this.add.text(width / 2, height / 2 + 20, `최고 기록: ${highScore}`, {
             font: '24px Arial',
             fill: '#4ECDC4'
         });
@@ -48,7 +48,9 @@ class GameOverScene extends Phaser.Scene {
                 fill: '#95E1D3'
             });
             newRecordText.setOrigin(0.5);
-            this.saveHighScore(this.finalScore);
+
+            // IndexedDB에 저장
+            await this.saveHighScore(this.finalScore);
 
             // 반짝임 효과
             this.tweens.add({
@@ -110,15 +112,22 @@ class GameOverScene extends Phaser.Scene {
         return button;
     }
 
-    getHighScore() {
+    async getHighScore() {
         const mode = window.TowerStacker.currentMode || 'classic';
-        const key = `${GameConfig.storage.highScores}-${mode}`;
-        return parseInt(localStorage.getItem(key) || '0');
+        try {
+            return await window.dataManager.getHighScore(mode);
+        } catch (error) {
+            console.error('Error getting high score:', error);
+            return 0;
+        }
     }
 
-    saveHighScore(score) {
+    async saveHighScore(score) {
         const mode = window.TowerStacker.currentMode || 'classic';
-        const key = `${GameConfig.storage.highScores}-${mode}`;
-        localStorage.setItem(key, score.toString());
+        try {
+            await window.dataManager.saveHighScore(mode, score);
+        } catch (error) {
+            console.error('Error saving high score:', error);
+        }
     }
 }

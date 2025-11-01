@@ -6,7 +6,7 @@ class MainMenuScene extends Phaser.Scene {
         super({ key: 'MainMenuScene' });
     }
 
-    create() {
+    async create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
@@ -43,12 +43,22 @@ class MainMenuScene extends Phaser.Scene {
             });
         });
 
-        // 최고 기록 표시 (임시)
-        const highScoreText = this.add.text(width / 2, height - 50, '최고 기록: 0m', {
+        // 최고 기록 표시 (IndexedDB에서 불러오기)
+        const highScore = await this.getHighScore('classic');
+        const highScoreText = this.add.text(width / 2, height - 50, `클래식 최고 기록: ${highScore}`, {
             font: '18px Arial',
             fill: '#FFE66D'
         });
         highScoreText.setOrigin(0.5);
+    }
+
+    async getHighScore(mode) {
+        try {
+            return await window.dataManager.getHighScore(mode);
+        } catch (error) {
+            console.error('Error getting high score:', error);
+            return 0;
+        }
     }
 
     createButton(x, y, label, callback) {
