@@ -17,6 +17,10 @@ class GameScene extends Phaser.Scene {
         this.gameMode = window.TowerStacker.currentMode || 'classic';
         this.modeConfig = GameConfig.modes[this.gameMode];
 
+        // 현재 스킨 불러오기
+        const currentSkinId = window.dataManager.getCurrentSkin();
+        this.currentSkin = window.dataManager.getSkinById(currentSkinId);
+
         // 게임 상태 초기화
         this.score = 0;
         this.currentHeight = 0;
@@ -203,9 +207,12 @@ class GameScene extends Phaser.Scene {
     }
 
     getBlockInfo(type) {
+        // 현재 스킨의 색상 사용
+        const skinColors = this.currentSkin ? this.currentSkin.colors : [0xFF6B6B, 0x4ECDC4, 0xFFE66D, 0x95E1D3, 0xF38181];
+
         const blockTypes = {
             normal: {
-                color: Phaser.Math.RND.pick([0xFF6B6B, 0x4ECDC4, 0xFFE66D, 0x95E1D3, 0xF38181]),
+                color: Phaser.Math.RND.pick(skinColors),
                 icon: '',
                 properties: {}
             },
@@ -424,14 +431,58 @@ class GameScene extends Phaser.Scene {
         this.isGameOver = true;
         console.log('Game Over! Final score:', this.score);
 
+        // 코인 계산
+        const earnedCoins = this.calculateEarnedCoins();
+
         // 게임 오버 씬으로 전환
         this.time.delayedCall(1000, () => {
             this.scene.start('GameOverScene', {
                 score: this.score,
                 mode: this.gameMode,
-                stage: this.currentStage // 퍼즐 모드의 경우
+                stage: this.currentStage, // 퍼즐 모드의 경우
+                earnedCoins: earnedCoins,
+                height: this.currentHeight,
+                blockCount: this.blockCount,
+                specialBlockCount: this.blocks.filter(b => b.type !== 'normal').length
             });
         });
+    }
+
+    /**
+     * 획득한 코인 계산
+     */
+    calculateEarnedCoins() {
+        const coinConfig = GameConfig.coins;
+        const modeConfig = this.modeConfig;
+
+        let coins = 0;
+
+        // 기본 코인 (높이 + 블록 수)
+        coins += this.currentHeight * coinConfig.perHeight;
+        coins += this.blockCount * coinConfig.perBlock;
+
+        // 특수 블록 보너스
+        const specialBlockCount = this.blocks.filter(b => b.type !== 'normal').length;
+        coins += specialBlockCount * coinConfig.specialBlockBonus;
+
+        // 타임 어택 시간 보너스
+        if (this.gameMode === 'timeAttack' && this.timeRemaining && this.startTime) {
+            const elapsed = Date.now() - this.startTime;
+            const remaining = Math.max(0, this.timeRemaining - elapsed);
+            const secondsRemaining = Math.floor(remaining / 1000);
+            coins += secondsRemaining * coinConfig.timeAttackTimeBonus;
+        }
+
+        // 퍼즐 스테이지 완료 보너스
+        if (this.gameMode === 'puzzle' && this.stageCompleted) {
+            coins += coinConfig.stageCompleteBonus;
+        }
+
+        // 모드별 배율 적용
+        coins = Math.floor(coins * modeConfig.coinMultiplier);
+
+        console.log(`Earned coins: ${coins}`);
+        return coins;
     }
 
     // ===== 특수 블록 효과 함수들 =====

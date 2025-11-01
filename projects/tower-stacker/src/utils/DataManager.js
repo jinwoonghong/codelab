@@ -164,6 +164,139 @@ class DataManager {
             return [];
         }
     }
+
+    // ===== 코인 관리 (LocalStorage 사용) =====
+
+    /**
+     * 현재 코인 잔액 조회
+     */
+    getCoins() {
+        try {
+            const coins = localStorage.getItem(GameConfig.storage.coins);
+            return coins ? parseInt(coins, 10) : 0;
+        } catch (error) {
+            console.error('Error getting coins:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * 코인 추가
+     */
+    addCoins(amount) {
+        try {
+            const currentCoins = this.getCoins();
+            const newAmount = currentCoins + amount;
+            localStorage.setItem(GameConfig.storage.coins, newAmount.toString());
+            console.log(`Added ${amount} coins. Total: ${newAmount}`);
+            return newAmount;
+        } catch (error) {
+            console.error('Error adding coins:', error);
+            return this.getCoins();
+        }
+    }
+
+    /**
+     * 코인 사용 (차감)
+     */
+    spendCoins(amount) {
+        try {
+            const currentCoins = this.getCoins();
+            if (currentCoins >= amount) {
+                const newAmount = currentCoins - amount;
+                localStorage.setItem(GameConfig.storage.coins, newAmount.toString());
+                console.log(`Spent ${amount} coins. Remaining: ${newAmount}`);
+                return true;
+            } else {
+                console.log('Not enough coins');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error spending coins:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 코인 설정 (디버그/관리자용)
+     */
+    setCoins(amount) {
+        try {
+            localStorage.setItem(GameConfig.storage.coins, amount.toString());
+            console.log(`Coins set to: ${amount}`);
+            return amount;
+        } catch (error) {
+            console.error('Error setting coins:', error);
+            return this.getCoins();
+        }
+    }
+
+    // ===== 스킨 관리 =====
+
+    /**
+     * 현재 적용된 스킨 ID 조회
+     */
+    getCurrentSkin() {
+        try {
+            const skinId = localStorage.getItem(GameConfig.storage.currentSkin);
+            return skinId || 'classic'; // 기본값: 클래식
+        } catch (error) {
+            console.error('Error getting current skin:', error);
+            return 'classic';
+        }
+    }
+
+    /**
+     * 스킨 적용
+     */
+    setCurrentSkin(skinId) {
+        try {
+            localStorage.setItem(GameConfig.storage.currentSkin, skinId);
+            console.log(`Current skin set to: ${skinId}`);
+            return true;
+        } catch (error) {
+            console.error('Error setting current skin:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 스킨 ID로 스킨 데이터 가져오기
+     */
+    getSkinById(skinId) {
+        const allSkins = [
+            ...GameConfig.skins.common,
+            ...GameConfig.skins.rare,
+            ...GameConfig.skins.epic,
+            ...GameConfig.skins.legendary
+        ];
+        return allSkins.find(skin => skin.id === skinId);
+    }
+
+    /**
+     * 뽑기 실행
+     */
+    performGacha() {
+        const rand = Math.random();
+        const rates = GameConfig.gacha.rates;
+
+        let rarity;
+        if (rand < rates.legendary) {
+            rarity = 'legendary';
+        } else if (rand < rates.legendary + rates.epic) {
+            rarity = 'epic';
+        } else if (rand < rates.legendary + rates.epic + rates.rare) {
+            rarity = 'rare';
+        } else {
+            rarity = 'common';
+        }
+
+        // 해당 등급의 스킨 중 랜덤 선택
+        const skinsInRarity = GameConfig.skins[rarity];
+        const selectedSkin = Phaser.Math.RND.pick(skinsInRarity);
+
+        return { ...selectedSkin, isNew: false };
+    }
 }
 
 // 전역 인스턴스

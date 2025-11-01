@@ -80,22 +80,78 @@ const GameConfig = {
         classic: {
             name: '클래식',
             description: '가장 높이 쌓기',
-            timeLimit: null
+            timeLimit: null,
+            coinMultiplier: 1.0
         },
         timeAttack: {
             name: '타임 어택',
             description: '90초 안에 최고 높이 달성',
-            timeLimit: 90000  // 90초
+            timeLimit: 90000,  // 90초
+            coinMultiplier: 1.5
         },
         dailyChallenge: {
             name: '일일 도전',
             description: '매일 동일한 블록 순서',
-            timeLimit: null
+            timeLimit: null,
+            coinMultiplier: 2.0
         },
         puzzle: {
             name: '퍼즐',
             description: '미션을 완료하세요',
-            timeLimit: null
+            timeLimit: null,
+            coinMultiplier: 1.2
+        }
+    },
+
+    // 코인 시스템
+    coins: {
+        // 기본 획득량
+        perHeight: 2,           // 높이 1m당 2코인
+        perBlock: 5,            // 블록 1개당 5코인
+        specialBlockBonus: 10,  // 특수 블록 사용 시 10코인
+
+        // 모드별 보너스
+        newRecordBonus: 100,    // 신기록 달성 시 100코인
+        stageCompleteBonus: 50, // 퍼즐 스테이지 완료 시 50코인
+
+        // 타임 어택 시간 보너스 (남은 시간 1초당)
+        timeAttackTimeBonus: 2
+    },
+
+    // 블록 스킨 & 테마
+    skins: {
+        // 일반 등급 (70%)
+        common: [
+            { id: 'classic', name: '클래식', colors: [0xFF6B6B, 0x4ECDC4, 0xFFE66D, 0x95E1D3, 0xF38181], rarity: 'common' },
+            { id: 'pastel', name: '파스텔', colors: [0xFFB3BA, 0xFFDFBA, 0xFFFFBA, 0xBAFFC9, 0xBAE1FF], rarity: 'common' },
+            { id: 'earth', name: '대지', colors: [0x8B4513, 0xD2691E, 0xA0522D, 0xCD853F, 0xDEB887], rarity: 'common' }
+        ],
+        // 레어 등급 (25%)
+        rare: [
+            { id: 'neon', name: '네온', colors: [0xFF00FF, 0x00FFFF, 0xFF00AA, 0x00FF00, 0xFFFF00], rarity: 'rare' },
+            { id: 'ocean', name: '바다', colors: [0x006994, 0x0099CC, 0x33B5E5, 0x66CCFF, 0x99E5FF], rarity: 'rare' },
+            { id: 'sunset', name: '석양', colors: [0xFF6B35, 0xFF8C42, 0xFFA07A, 0xFFB347, 0xFFC875], rarity: 'rare' }
+        ],
+        // 에픽 등급 (4%)
+        epic: [
+            { id: 'galaxy', name: '은하수', colors: [0x190061, 0x240090, 0x3500D3, 0x7209B7, 0xB5179E], rarity: 'epic' },
+            { id: 'fire', name: '불꽃', colors: [0xFF0000, 0xFF4500, 0xFF6347, 0xFF7F50, 0xFFA500], rarity: 'epic' }
+        ],
+        // 레전드 등급 (1%)
+        legendary: [
+            { id: 'rainbow', name: '무지개', colors: [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF], rarity: 'legendary' },
+            { id: 'gold', name: '황금', colors: [0xFFD700, 0xFFC700, 0xFFB700, 0xFFA700, 0xFF9700], rarity: 'legendary' }
+        ]
+    },
+
+    // 뽑기 시스템
+    gacha: {
+        cost: 100,  // 1회 뽑기 비용
+        rates: {
+            common: 0.70,      // 70%
+            rare: 0.25,        // 25%
+            epic: 0.04,        // 4%
+            legendary: 0.01    // 1%
         }
     },
 
@@ -104,6 +160,8 @@ const GameConfig = {
         highScores: 'tower-stacker-high-scores',
         settings: 'tower-stacker-settings',
         inventory: 'tower-stacker-inventory',
-        achievements: 'tower-stacker-achievements'
+        achievements: 'tower-stacker-achievements',
+        coins: 'tower-stacker-coins',
+        currentSkin: 'tower-stacker-current-skin'
     }
 };
