@@ -13,6 +13,10 @@ class GameScene extends Phaser.Scene {
         // 배경
         this.add.rectangle(0, 0, width, height, 0x16213e).setOrigin(0);
 
+        // 게임 모드 설정
+        this.gameMode = window.TowerStacker.currentMode || 'classic';
+        this.modeConfig = GameConfig.modes[this.gameMode];
+
         // 게임 상태 초기화
         this.score = 0;
         this.currentHeight = 0;
@@ -21,6 +25,23 @@ class GameScene extends Phaser.Scene {
         this.groundY = height - 25; // 바닥 y 위치 저장
         this.blockCount = 0;
         this.movingDirection = 1; // 블록 이동 방향
+
+        // 타임 어택 모드 초기화
+        if (this.gameMode === 'timeAttack') {
+            this.timeRemaining = this.modeConfig.timeLimit; // 90000ms = 90초
+            this.startTime = Date.now();
+        }
+
+        // 일일 도전 모드 초기화
+        if (this.gameMode === 'dailyChallenge') {
+            this.initDailySeed();
+        }
+
+        // 퍼즐 모드 초기화
+        if (this.gameMode === 'puzzle') {
+            this.currentStage = window.TowerStacker.currentStage || 1;
+            this.stageGoal = this.getStageGoal(this.currentStage);
+        }
 
         // UI 생성
         this.createUI();
@@ -38,13 +59,51 @@ class GameScene extends Phaser.Scene {
     createUI() {
         const width = this.cameras.main.width;
 
+        // 게임 모드 표시
+        this.modeText = this.add.text(width / 2, 20, this.modeConfig.name, {
+            font: 'bold 18px Arial',
+            fill: '#4ECDC4'
+        });
+        this.modeText.setOrigin(0.5, 0);
+
         // 점수 텍스트
-        this.scoreText = this.add.text(20, 20, '높이: 0m', {
-            font: 'bold 24px Arial',
+        this.scoreText = this.add.text(20, 60, '높이: 0m | 점수: 0', {
+            font: 'bold 20px Arial',
             fill: '#FFE66D'
         });
 
-        // 일시정지 버튼 (간단히 텍스트로)
+        // 타임 어택 모드: 타이머 표시
+        if (this.gameMode === 'timeAttack') {
+            this.timerText = this.add.text(width / 2, 50, '⏱ 90', {
+                font: 'bold 32px Arial',
+                fill: '#FF6B6B'
+            });
+            this.timerText.setOrigin(0.5, 0);
+        }
+
+        // 퍼즐 모드: 스테이지 및 목표 표시
+        if (this.gameMode === 'puzzle') {
+            this.stageText = this.add.text(20, 100, `스테이지 ${this.currentStage}`, {
+                font: 'bold 18px Arial',
+                fill: '#95E1D3'
+            });
+
+            this.goalText = this.add.text(20, 130, this.getGoalText(), {
+                font: '16px Arial',
+                fill: '#ffffff'
+            });
+        }
+
+        // 일일 도전 모드: 날짜 표시
+        if (this.gameMode === 'dailyChallenge') {
+            const today = new Date().toLocaleDateString('ko-KR');
+            this.dateText = this.add.text(20, 100, `📅 ${today}`, {
+                font: '16px Arial',
+                fill: '#95E1D3'
+            });
+        }
+
+        // 일시정지 버튼
         const pauseBtn = this.add.text(width - 20, 20, '⏸', {
             font: '32px Arial',
             fill: '#ffffff'
@@ -123,13 +182,20 @@ class GameScene extends Phaser.Scene {
     }
 
     determineBlockType() {
-        // 특수 블록 등장 확률
-        const rand = Math.random();
+        // 일일 도전 모드에서는 시드 기반 랜덤 사용
+        const rand = this.gameMode === 'dailyChallenge' ? this.seededRandom() : Math.random();
         const specialChance = GameConfig.gameplay.specialBlockChance;
 
         if (rand < specialChance) {
             // 특수 블록 중 랜덤 선택
             const types = ['adhesive', 'rubber', 'speed', 'glass'];
+
+            // 일일 도전 모드에서는 시드 기반 선택
+            if (this.gameMode === 'dailyChallenge') {
+                const typeIndex = Math.floor(this.seededRandom() * types.length);
+                return types[typeIndex];
+            }
+
             return Phaser.Math.RND.pick(types);
         }
 
@@ -287,6 +353,16 @@ class GameScene extends Phaser.Scene {
 
         // 환경 변수 체크
         this.checkEnvironmentalEffects();
+
+        // 타임 어택 모드: 타이머 업데이트
+        if (this.gameMode === 'timeAttack' && this.timerText) {
+            this.updateTimer();
+        }
+
+        // 퍼즐 모드: 목표 달성 체크
+        if (this.gameMode === 'puzzle') {
+            this.checkStageGoal();
+        }
     }
 
     updateTowerHeight() {
@@ -350,7 +426,11 @@ class GameScene extends Phaser.Scene {
 
         // 게임 오버 씬으로 전환
         this.time.delayedCall(1000, () => {
-            this.scene.start('GameOverScene', { score: this.score });
+            this.scene.start('GameOverScene', {
+                score: this.score,
+                mode: this.gameMode,
+                stage: this.currentStage // 퍼즐 모드의 경우
+            });
         });
     }
 
@@ -599,5 +679,185 @@ class GameScene extends Phaser.Scene {
             this.matter.world.engine.gravity.y = originalGravity;
             this.gravityChangeActive = false;
         });
+    }
+
+    // ===== 게임 모드별 함수들 =====
+
+    /**
+     * 타임 어택 모드: 타이머 업데이트
+     */
+    updateTimer() {
+        if (!this.startTime || !this.timeRemaining) return;
+
+        const elapsed = Date.now() - this.startTime;
+        const remaining = Math.max(0, this.timeRemaining - elapsed);
+        const seconds = Math.ceil(remaining / 1000);
+
+        // 타이머 업데이트
+        if (this.timerText) {
+            this.timerText.setText(`⏱ ${seconds}`);
+
+            // 시간이 얼마 남지 않으면 빨간색으로 깜빡임
+            if (seconds <= 10) {
+                this.timerText.setTint(seconds % 2 === 0 ? 0xFF0000 : 0xFF6B6B);
+            }
+        }
+
+        // 시간 종료
+        if (remaining <= 0) {
+            console.log('⏱ 시간 종료!');
+            this.gameOver();
+        }
+    }
+
+    /**
+     * 일일 도전 모드: 날짜 기반 시드 초기화
+     */
+    initDailySeed() {
+        // 오늘 날짜로 시드 생성 (YYYYMMDD 형식)
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        this.dailySeed = parseInt(`${year}${month}${day}`);
+        this.seedIndex = 0;
+
+        console.log('📅 일일 도전 시드:', this.dailySeed);
+    }
+
+    /**
+     * 시드 기반 랜덤 숫자 생성 (0-1 사이)
+     */
+    seededRandom() {
+        if (!this.dailySeed) return Math.random();
+
+        // Simple Linear Congruential Generator (LCG)
+        this.seedIndex++;
+        const x = Math.sin(this.dailySeed + this.seedIndex) * 10000;
+        return x - Math.floor(x);
+    }
+
+    /**
+     * 퍼즐 모드: 스테이지 목표 달성 체크
+     */
+    checkStageGoal() {
+        if (!this.stageGoal || this.stageCompleted) return;
+
+        let goalAchieved = false;
+
+        switch (this.stageGoal.type) {
+            case 'height':
+                // 특정 높이 도달
+                if (this.currentHeight >= this.stageGoal.target) {
+                    goalAchieved = true;
+                }
+                break;
+
+            case 'blocks':
+                // 특정 개수의 블록 쌓기
+                if (this.blockCount >= this.stageGoal.target) {
+                    goalAchieved = true;
+                }
+                break;
+
+            case 'special':
+                // 특수 블록 사용 횟수
+                const specialCount = this.blocks.filter(b => b.type !== 'normal').length;
+                if (specialCount >= this.stageGoal.target) {
+                    goalAchieved = true;
+                }
+                break;
+
+            case 'survive':
+                // 시간 생존
+                if (!this.surviveStartTime) {
+                    this.surviveStartTime = Date.now();
+                }
+                const survivedTime = Date.now() - this.surviveStartTime;
+                if (survivedTime >= this.stageGoal.target) {
+                    goalAchieved = true;
+                }
+                break;
+        }
+
+        if (goalAchieved) {
+            this.completeStage();
+        }
+    }
+
+    /**
+     * 스테이지 완료 처리
+     */
+    completeStage() {
+        if (this.stageCompleted) return;
+
+        this.stageCompleted = true;
+        console.log('🎉 스테이지 완료!');
+
+        // 완료 메시지 표시
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const completeText = this.add.text(width / 2, height / 2, '🎉 스테이지 완료! 🎉', {
+            font: 'bold 36px Arial',
+            fill: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 4
+        });
+        completeText.setOrigin(0.5);
+        completeText.setAlpha(0);
+
+        this.tweens.add({
+            targets: completeText,
+            alpha: 1,
+            scale: 1.2,
+            duration: 500,
+            yoyo: true,
+            repeat: 0
+        });
+
+        // 3초 후 다음 스테이지 또는 게임 오버
+        this.time.delayedCall(3000, () => {
+            const nextStage = this.currentStage + 1;
+            const nextGoal = this.getStageGoal(nextStage);
+
+            if (nextGoal) {
+                // 다음 스테이지로
+                window.TowerStacker.currentStage = nextStage;
+                this.scene.restart();
+            } else {
+                // 모든 스테이지 완료
+                this.gameOver();
+            }
+        });
+    }
+
+    /**
+     * 스테이지 목표 가져오기
+     */
+    getStageGoal(stageNumber) {
+        const stages = [
+            { stage: 1, type: 'height', target: 5, description: '높이 5m 달성' },
+            { stage: 2, type: 'blocks', target: 10, description: '블록 10개 쌓기' },
+            { stage: 3, type: 'height', target: 10, description: '높이 10m 달성' },
+            { stage: 4, type: 'special', target: 3, description: '특수 블록 3개 사용' },
+            { stage: 5, type: 'height', target: 15, description: '높이 15m 달성' },
+            { stage: 6, type: 'blocks', target: 20, description: '블록 20개 쌓기' },
+            { stage: 7, type: 'survive', target: 30000, description: '30초 생존' },
+            { stage: 8, type: 'height', target: 20, description: '높이 20m 달성' },
+            { stage: 9, type: 'special', target: 5, description: '특수 블록 5개 사용' },
+            { stage: 10, type: 'height', target: 30, description: '높이 30m 달성 (최종)' }
+        ];
+
+        return stages.find(s => s.stage === stageNumber);
+    }
+
+    /**
+     * 목표 텍스트 가져오기
+     */
+    getGoalText() {
+        if (!this.stageGoal) return '';
+
+        return `목표: ${this.stageGoal.description}`;
     }
 }

@@ -8,6 +8,8 @@ class GameOverScene extends Phaser.Scene {
 
     init(data) {
         this.finalScore = data.score || 0;
+        this.gameMode = data.mode || 'classic';
+        this.currentStage = data.stage || 1;
     }
 
     async create() {
@@ -18,13 +20,21 @@ class GameOverScene extends Phaser.Scene {
         this.add.rectangle(0, 0, width, height, 0x000000, 0.8).setOrigin(0);
 
         // Game Over 텍스트
-        const gameOverText = this.add.text(width / 2, height / 2 - 120, 'GAME OVER', {
+        const gameOverText = this.add.text(width / 2, height / 2 - 160, 'GAME OVER', {
             font: 'bold 48px Arial',
             fill: '#FF6B6B',
             stroke: '#000000',
             strokeThickness: 4
         });
         gameOverText.setOrigin(0.5);
+
+        // 모드 표시
+        const modeConfig = GameConfig.modes[this.gameMode];
+        const modeText = this.add.text(width / 2, height / 2 - 100, `${modeConfig.name} 모드`, {
+            font: '20px Arial',
+            fill: '#95E1D3'
+        });
+        modeText.setOrigin(0.5);
 
         // 최종 점수
         const scoreText = this.add.text(width / 2, height / 2 - 40, `최종 점수: ${this.finalScore}`, {
@@ -64,6 +74,12 @@ class GameOverScene extends Phaser.Scene {
 
         // 버튼들
         this.createButton(width / 2, height / 2 + 130, '다시 시작', () => {
+            // 같은 모드로 재시작
+            window.TowerStacker.currentMode = this.gameMode;
+            // 퍼즐 모드는 스테이지 1부터 시작
+            if (this.gameMode === 'puzzle') {
+                window.TowerStacker.currentStage = 1;
+            }
             this.scene.start('GameScene');
         });
 
