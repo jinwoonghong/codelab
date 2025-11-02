@@ -126,8 +126,16 @@ class GameOverScene extends Phaser.Scene {
             });
         }
 
+        // 챌린지 코드 버튼
+        const challengeY = newRecordBonus > 0 ? height / 2 + 170 : height / 2 + 140;
+        const challengeBtn = this.createButton(width / 2, challengeY, '📋 챌린지 코드 복사', () => {
+            this.copyChallengCode();
+        });
+        challengeBtn.scaleX = 0.85;
+        challengeBtn.scaleY = 0.85;
+
         // 버튼들
-        const buttonStartY = newRecordBonus > 0 ? height / 2 + 180 : height / 2 + 150;
+        const buttonStartY = newRecordBonus > 0 ? height / 2 + 230 : height / 2 + 200;
         this.createButton(width / 2, buttonStartY, '다시 시작', () => {
             // 같은 모드로 재시작
             window.TowerStacker.currentMode = this.gameMode;
@@ -140,6 +148,101 @@ class GameOverScene extends Phaser.Scene {
 
         this.createButton(width / 2, buttonStartY + 70, '메인 메뉴', () => {
             this.scene.start('MainMenuScene');
+        });
+    }
+
+    copyChallengCode() {
+        // 챌린지 코드 생성
+        const challengeCode = window.replayManager.generateChallengeCode();
+
+        if (!challengeCode) {
+            this.showMessage('챌린지 코드 생성 실패', 0xFF6B6B);
+            return;
+        }
+
+        // 클립보드에 복사
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(challengeCode).then(() => {
+                this.showMessage('챌린지 코드가 클립보드에 복사되었습니다!', 0x4ECDC4);
+                console.log('챌린지 코드:', challengeCode);
+            }).catch(err => {
+                console.error('클립보드 복사 실패:', err);
+                this.showFallbackCopyUI(challengeCode);
+            });
+        } else {
+            // Clipboard API를 지원하지 않는 경우
+            this.showFallbackCopyUI(challengeCode);
+        }
+    }
+
+    showFallbackCopyUI(code) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // 반투명 배경
+        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8);
+        overlay.setOrigin(0);
+        overlay.setInteractive();
+
+        // 코드 표시 박스
+        const box = this.add.container(width / 2, height / 2);
+
+        const bg = this.add.rectangle(0, 0, 600, 300, 0x2d2d2d);
+        bg.setStrokeStyle(3, 0x4ECDC4);
+
+        const title = this.add.text(0, -120, '챌린지 코드', {
+            font: 'bold 24px Arial',
+            fill: '#4ECDC4'
+        });
+        title.setOrigin(0.5);
+
+        const codeText = this.add.text(0, -50, code.substring(0, 60) + '...', {
+            font: '14px monospace',
+            fill: '#ffffff',
+            wordWrap: { width: 550 }
+        });
+        codeText.setOrigin(0.5);
+
+        const instruction = this.add.text(0, 20, '코드를 선택하여 복사하세요', {
+            font: '16px Arial',
+            fill: '#95E1D3'
+        });
+        instruction.setOrigin(0.5);
+
+        const closeBtn = this.add.text(0, 100, '닫기', {
+            font: 'bold 20px Arial',
+            fill: '#ffffff',
+            backgroundColor: '#4ECDC4',
+            padding: { x: 40, y: 10 }
+        });
+        closeBtn.setOrigin(0.5);
+        closeBtn.setInteractive({ useHandCursor: true });
+        closeBtn.on('pointerdown', () => {
+            overlay.destroy();
+            box.destroy();
+        });
+
+        box.add([bg, title, codeText, instruction, closeBtn]);
+
+        console.log('챌린지 코드:', code);
+    }
+
+    showMessage(text, color = 0xFFFFFF) {
+        const width = this.cameras.main.width;
+        const message = this.add.text(width / 2, 100, text, {
+            font: 'bold 20px Arial',
+            fill: `#${color.toString(16).padStart(6, '0')}`,
+            stroke: '#000000',
+            strokeThickness: 3
+        });
+        message.setOrigin(0.5);
+
+        this.tweens.add({
+            targets: message,
+            alpha: 0,
+            y: 50,
+            duration: 2000,
+            onComplete: () => message.destroy()
         });
     }
 
