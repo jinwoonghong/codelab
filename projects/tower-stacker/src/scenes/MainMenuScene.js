@@ -13,6 +13,15 @@ class MainMenuScene extends Phaser.Scene {
         // 배경
         this.add.rectangle(0, 0, width, height, 0x1a1a2e).setOrigin(0);
 
+        // 사운드 시스템 초기화 (첫 클릭 시)
+        this.input.once('pointerdown', () => {
+            if (window.soundManager) {
+                window.soundManager.init();
+                // BGM 재생
+                window.soundManager.playBackgroundMusic();
+            }
+        });
+
         // 타이틀
         const title = this.add.text(width / 2, 100, '🏗️ 타워 스태커', {
             font: 'bold 48px Arial',
@@ -75,6 +84,13 @@ class MainMenuScene extends Phaser.Scene {
         });
         museumButton.scaleX = 0.65;
         museumButton.scaleY = 0.65;
+
+        // 설정 버튼 (우측 상단)
+        const settingsButton = this.createButton(width - 60, 50, '⚙️', () => {
+            this.scene.start('SettingsScene');
+        });
+        settingsButton.scaleX = 0.5;
+        settingsButton.scaleY = 0.5;
 
         // 칭호 표시
         const titleId = window.dataManager.getCurrentTitle();
@@ -144,6 +160,11 @@ class MainMenuScene extends Phaser.Scene {
 
         // 클릭 이벤트
         bg.on('pointerdown', () => {
+            // 버튼 클릭 사운드
+            if (window.soundManager) {
+                window.soundManager.playButtonClick();
+            }
+
             this.tweens.add({
                 targets: button,
                 scaleX: 0.95,
@@ -163,6 +184,12 @@ class MainMenuScene extends Phaser.Scene {
         // 일반 모드에서는 고스트 모드 비활성화
         window.TowerStacker.isGhostMode = false;
         window.TowerStacker.currentReplayData = null;
+
+        // BGM 중지
+        if (window.soundManager) {
+            window.soundManager.stopBackgroundMusic();
+        }
+
         this.scene.start('GameScene');
     }
 }

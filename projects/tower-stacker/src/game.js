@@ -13,7 +13,8 @@ const config = {
         GameOverScene,
         ShopScene,
         MuseumScene,
-        ChallengeScene
+        ChallengeScene,
+        SettingsScene
     ]
 };
 

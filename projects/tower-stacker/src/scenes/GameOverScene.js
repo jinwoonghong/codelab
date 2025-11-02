@@ -78,6 +78,11 @@ class GameOverScene extends Phaser.Scene {
         // 실제로 코인 추가
         const newBalance = window.dataManager.addCoins(this.earnedCoins);
 
+        // 코인 획득 사운드
+        if (this.earnedCoins > 0 && window.soundManager) {
+            window.soundManager.playCoinCollect();
+        }
+
         // 현재 잔액 표시
         const balanceY = height / 2 + 30;
         const balanceText = this.add.text(width / 2, balanceY, `잔액: ${newBalance} 코인`, {
@@ -115,6 +120,11 @@ class GameOverScene extends Phaser.Scene {
 
             // IndexedDB에 저장
             await this.saveHighScore(this.finalScore);
+
+            // 새 기록 달성 사운드
+            if (window.soundManager) {
+                window.soundManager.playNewRecord();
+            }
 
             // 반짝임 효과
             this.tweens.add({
@@ -281,6 +291,11 @@ class GameOverScene extends Phaser.Scene {
 
         // 클릭 이벤트
         bg.on('pointerdown', () => {
+            // 버튼 클릭 사운드
+            if (window.soundManager) {
+                window.soundManager.playButtonClick();
+            }
+
             this.tweens.add({
                 targets: button,
                 scaleX: 0.95,

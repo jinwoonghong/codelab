@@ -24,6 +24,12 @@ class BootScene extends Phaser.Scene {
             console.log('✅ GifManager initialized');
         }
 
+        // SoundManager 초기화
+        if (typeof window.soundManager === 'undefined') {
+            window.soundManager = new SoundManager();
+            console.log('✅ SoundManager initialized');
+        }
+
         // 메인 메뉴로 이동
         this.scene.start('MainMenuScene');
     }

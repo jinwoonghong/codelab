@@ -79,7 +79,13 @@ class GameScene extends Phaser.Scene {
         this.spawnNextBlock();
 
         // 입력 처리
-        this.input.on('pointerdown', () => this.dropBlock());
+        this.input.on('pointerdown', () => {
+            // 첫 클릭 시 사운드 시스템 초기화
+            if (window.soundManager) {
+                window.soundManager.init();
+            }
+            this.dropBlock();
+        });
     }
 
     createUI() {
@@ -325,6 +331,15 @@ class GameScene extends Phaser.Scene {
         // 특수 블록 효과 적용
         this.applySpecialBlockEffect(this.currentBlock);
 
+        // 사운드 재생
+        if (window.soundManager) {
+            if (this.currentBlock.type === 'normal') {
+                window.soundManager.playBlockDrop();
+            } else {
+                window.soundManager.playSpecialBlock(this.currentBlock.type);
+            }
+        }
+
         // 가속 블록 보너스 점수
         if (this.currentBlock.type === 'speed' && props.bonusScore) {
             this.score += props.bonusScore;
@@ -469,6 +484,11 @@ class GameScene extends Phaser.Scene {
 
         this.isGameOver = true;
         console.log('Game Over! Final score:', this.score);
+
+        // 게임 오버 사운드
+        if (window.soundManager) {
+            window.soundManager.playGameOver();
+        }
 
         // 코인 계산
         const earnedCoins = this.calculateEarnedCoins();
