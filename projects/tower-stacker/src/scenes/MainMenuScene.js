@@ -41,10 +41,10 @@ class MainMenuScene extends Phaser.Scene {
 
         // 게임 모드 버튼들
         const modes = [
-            { key: 'classic', label: '클래식 모드', y: 230 },
-            { key: 'timeAttack', label: '타임 어택', y: 300 },
-            { key: 'dailyChallenge', label: '일일 도전', y: 370 },
-            { key: 'puzzle', label: '퍼즐 모드', y: 440 }
+            { key: 'classic', label: '클래식 모드', y: 220 },
+            { key: 'timeAttack', label: '타임 어택', y: 285 },
+            { key: 'dailyChallenge', label: '일일 도전', y: 350 },
+            { key: 'puzzle', label: '퍼즐 모드', y: 415 }
         ];
 
         modes.forEach(mode => {
@@ -53,17 +53,35 @@ class MainMenuScene extends Phaser.Scene {
             });
         });
 
-        // 상점 버튼
-        const shopButton = this.createButton(width / 2, 520, '🎁 블록 스킨 상점', () => {
+        // 하단 버튼들 (작게)
+        const buttonY = 490;
+        const shopButton = this.createButton(width / 2 - 130, buttonY, '🎁 상점', () => {
             this.scene.start('ShopScene');
         });
-        shopButton.scaleX = 0.9;
-        shopButton.scaleY = 0.9;
+        shopButton.scaleX = 0.7;
+        shopButton.scaleY = 0.7;
+
+        const museumButton = this.createButton(width / 2 + 130, buttonY, '🏛️ 박물관', () => {
+            this.scene.start('MuseumScene');
+        });
+        museumButton.scaleX = 0.7;
+        museumButton.scaleY = 0.7;
+
+        // 칭호 표시
+        const titleId = window.dataManager.getCurrentTitle();
+        const title = GameConfig.titles.find(t => t.id === titleId);
+        if (title) {
+            const titleText = this.add.text(width / 2, height - 60, `${title.icon} ${title.name}`, {
+                font: 'bold 18px Arial',
+                fill: '#FFD700'
+            });
+            titleText.setOrigin(0.5);
+        }
 
         // 최고 기록 표시 (IndexedDB에서 불러오기)
         const highScore = await this.getHighScore('classic');
         const highScoreText = this.add.text(width / 2, height - 30, `클래식 최고 기록: ${highScore}`, {
-            font: '16px Arial',
+            font: '14px Arial',
             fill: '#FFE66D'
         });
         highScoreText.setOrigin(0.5);

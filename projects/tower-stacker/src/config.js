@@ -155,6 +155,52 @@ const GameConfig = {
         }
     },
 
+    // 업적 시스템
+    achievements: [
+        // 높이 관련
+        { id: 'height_5', name: '초보 건축가', description: '높이 5m 달성', icon: '🏗️', type: 'height', target: 5, reward: 50 },
+        { id: 'height_10', name: '숙련 건축가', description: '높이 10m 달성', icon: '🏢', type: 'height', target: 10, reward: 100 },
+        { id: 'height_20', name: '마스터 건축가', description: '높이 20m 달성', icon: '🏙️', type: 'height', target: 20, reward: 200 },
+        { id: 'height_30', name: '전설의 건축가', description: '높이 30m 달성', icon: '🗼', type: 'height', target: 30, reward: 500 },
+
+        // 블록 수 관련
+        { id: 'blocks_50', name: '블록 마스터', description: '블록 50개 쌓기', icon: '📦', type: 'totalBlocks', target: 50, reward: 100 },
+        { id: 'blocks_100', name: '블록 그랜드마스터', description: '블록 100개 쌓기', icon: '📚', type: 'totalBlocks', target: 100, reward: 200 },
+
+        // 특수 블록 관련
+        { id: 'special_10', name: '특수블록 수집가', description: '특수 블록 10개 사용', icon: '✨', type: 'specialBlocks', target: 10, reward: 150 },
+        { id: 'special_30', name: '특수블록 애호가', description: '특수 블록 30개 사용', icon: '⭐', type: 'specialBlocks', target: 30, reward: 300 },
+
+        // 코인 관련
+        { id: 'coins_1000', name: '부자', description: '코인 1000개 획득', icon: '💰', type: 'coinsEarned', target: 1000, reward: 100 },
+        { id: 'coins_5000', name: '재벌', description: '코인 5000개 획득', icon: '💎', type: 'coinsEarned', target: 5000, reward: 500 },
+
+        // 게임 모드 관련
+        { id: 'play_10', name: '열정적인 플레이어', description: '10회 플레이', icon: '🎮', type: 'gamesPlayed', target: 10, reward: 100 },
+        { id: 'play_50', name: '열렬한 플레이어', description: '50회 플레이', icon: '🎯', type: 'gamesPlayed', target: 50, reward: 300 },
+
+        // 퍼즐 관련
+        { id: 'puzzle_stage5', name: '퍼즐 입문', description: '퍼즐 스테이지 5 클리어', icon: '🧩', type: 'puzzleStage', target: 5, reward: 200 },
+        { id: 'puzzle_stage10', name: '퍼즐 마스터', description: '퍼즐 스테이지 10 클리어', icon: '🏆', type: 'puzzleStage', target: 10, reward: 500 },
+
+        // 스킨 관련
+        { id: 'skins_5', name: '컬렉터', description: '스킨 5개 수집', icon: '🎨', type: 'skinsOwned', target: 5, reward: 200 },
+        { id: 'skins_all', name: '완벽한 컬렉터', description: '모든 스킨 수집', icon: '👑', type: 'skinsOwned', target: 10, reward: 1000 }
+    ],
+
+    // 칭호 시스템 (업적 달성 시 해금)
+    titles: [
+        { id: 'beginner', name: '초보자', requirement: null, icon: '🆕' },
+        { id: 'builder', name: '건축가', requirement: 'height_10', icon: '🏗️' },
+        { id: 'master_builder', name: '마스터 건축가', requirement: 'height_20', icon: '🏙️' },
+        { id: 'legend', name: '전설', requirement: 'height_30', icon: '🗼' },
+        { id: 'collector', name: '수집가', requirement: 'skins_5', icon: '🎨' },
+        { id: 'perfectionist', name: '완벽주의자', requirement: 'skins_all', icon: '👑' },
+        { id: 'puzzle_master', name: '퍼즐 마스터', requirement: 'puzzle_stage10', icon: '🧩' },
+        { id: 'rich', name: '부자', requirement: 'coins_5000', icon: '💎' },
+        { id: 'enthusiast', name: '열정가', requirement: 'play_50', icon: '🎯' }
+    ],
+
     // 로컬 스토리지 키
     storage: {
         highScores: 'tower-stacker-high-scores',
@@ -162,6 +208,8 @@ const GameConfig = {
         inventory: 'tower-stacker-inventory',
         achievements: 'tower-stacker-achievements',
         coins: 'tower-stacker-coins',
-        currentSkin: 'tower-stacker-current-skin'
+        currentSkin: 'tower-stacker-current-skin',
+        statistics: 'tower-stacker-statistics',
+        currentTitle: 'tower-stacker-current-title'
     }
 };

@@ -47,6 +47,11 @@ class GameScene extends Phaser.Scene {
             this.stageGoal = this.getStageGoal(this.currentStage);
         }
 
+        // 리플레이 녹화 시작
+        window.replayManager.startRecording(this.gameMode, {
+            skinId: window.dataManager.getCurrentSkin()
+        });
+
         // UI 생성
         this.createUI();
 
@@ -293,6 +298,13 @@ class GameScene extends Phaser.Scene {
         // 블록 배열에 추가
         this.blocks.push(this.currentBlock);
 
+        // 리플레이 녹화: 블록 드롭 이벤트
+        window.replayManager.recordBlockDrop(
+            this.currentBlock.type,
+            graphics.x,
+            graphics.y
+        );
+
         // 특수 블록 효과 적용
         this.applySpecialBlockEffect(this.currentBlock);
 
@@ -433,6 +445,31 @@ class GameScene extends Phaser.Scene {
 
         // 코인 계산
         const earnedCoins = this.calculateEarnedCoins();
+        const specialBlockCount = this.blocks.filter(b => b.type !== 'normal').length;
+
+        // 통계 업데이트
+        const updates = {
+            maxHeight: this.currentHeight,
+            totalBlocks: this.blockCount,
+            specialBlocks: specialBlockCount,
+            coinsEarned: earnedCoins,
+            gamesPlayed: 1
+        };
+
+        // 퍼즐 모드라면 스테이지 정보 추가
+        if (this.gameMode === 'puzzle' && this.currentStage) {
+            updates.puzzleStage = this.currentStage;
+        }
+
+        window.dataManager.updateStatistics(updates);
+
+        // 리플레이 녹화: 게임 결과 기록 및 중지
+        window.replayManager.recordGameResult({
+            score: this.score,
+            height: this.currentHeight,
+            blockCount: this.blockCount
+        });
+        window.replayManager.stopRecording();
 
         // 게임 오버 씬으로 전환
         this.time.delayedCall(1000, () => {
@@ -443,7 +480,7 @@ class GameScene extends Phaser.Scene {
                 earnedCoins: earnedCoins,
                 height: this.currentHeight,
                 blockCount: this.blockCount,
-                specialBlockCount: this.blocks.filter(b => b.type !== 'normal').length
+                specialBlockCount: specialBlockCount
             });
         });
     }
@@ -669,6 +706,9 @@ class GameScene extends Phaser.Scene {
 
         console.log('💨 돌풍 발생!');
 
+        // 리플레이 녹화: 환경 효과
+        window.replayManager.recordEnvironmentEffect('wind', direction);
+
         // 모든 블록에 힘 적용
         this.blocks.forEach(block => {
             if (block.body) {
@@ -716,9 +756,13 @@ class GameScene extends Phaser.Scene {
         this.gravityChangeActive = true;
 
         const originalGravity = this.matter.world.engine.gravity.y;
-        const newGravity = originalGravity * (Math.random() < 0.5 ? 1.5 : 0.5);
+        const multiplier = Math.random() < 0.5 ? 1.5 : 0.5;
+        const newGravity = originalGravity * multiplier;
 
         console.log('🌍 중력 변화!', newGravity > originalGravity ? '증가' : '감소');
+
+        // 리플레이 녹화: 환경 효과
+        window.replayManager.recordEnvironmentEffect('gravity', multiplier);
 
         this.matter.world.engine.gravity.y = newGravity;
 
