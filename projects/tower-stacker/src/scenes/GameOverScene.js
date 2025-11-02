@@ -134,8 +134,16 @@ class GameOverScene extends Phaser.Scene {
         challengeBtn.scaleX = 0.85;
         challengeBtn.scaleY = 0.85;
 
+        // GIF 저장 버튼
+        const gifY = challengeY + 60;
+        const gifBtn = this.createButton(width / 2, gifY, '🎬 명장면 GIF 저장', () => {
+            this.saveHighlightGif();
+        });
+        gifBtn.scaleX = 0.85;
+        gifBtn.scaleY = 0.85;
+
         // 버튼들
-        const buttonStartY = newRecordBonus > 0 ? height / 2 + 230 : height / 2 + 200;
+        const buttonStartY = newRecordBonus > 0 ? height / 2 + 290 : height / 2 + 260;
         this.createButton(width / 2, buttonStartY, '다시 시작', () => {
             // 같은 모드로 재시작
             window.TowerStacker.currentMode = this.gameMode;
@@ -302,6 +310,76 @@ class GameOverScene extends Phaser.Scene {
             await window.dataManager.saveHighScore(mode, score);
         } catch (error) {
             console.error('Error saving high score:', error);
+        }
+    }
+
+    async saveHighlightGif() {
+        if (!window.gifManager) {
+            this.showMessage('GIF 생성 기능을 사용할 수 없습니다', 0xFF6B6B);
+            return;
+        }
+
+        const frameCount = window.gifManager.getFrameCount();
+        if (frameCount === 0) {
+            this.showMessage('저장할 프레임이 없습니다', 0xFF6B6B);
+            return;
+        }
+
+        try {
+            // 생성 중 메시지 표시
+            this.showMessage(`GIF 생성 중... (${frameCount}프레임)`, 0x4ECDC4);
+
+            // GIF 생성
+            const gifBlob = await window.gifManager.generateGif();
+
+            // 파일명 생성 (타임스탬프 포함)
+            const timestamp = new Date().toISOString().replace(/[:]/g, '-').split('.')[0];
+            const filename = `tower-stacker_${this.finalScore}점_${timestamp}.gif`;
+
+            // 다운로드
+            window.gifManager.downloadGif(gifBlob, filename);
+
+            // 성공 메시지
+            this.showMessage('✅ GIF 저장 완료!', 0x4ECDC4);
+
+            // Web Share API 지원 확인 및 공유 옵션 제공
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([gifBlob], filename, { type: 'image/gif' })] })) {
+                // 공유 버튼 표시 (선택적)
+                const shareBtn = this.add.text(this.cameras.main.width / 2, 150, '📤 공유하기', {
+                    font: 'bold 18px Arial',
+                    fill: '#ffffff',
+                    backgroundColor: '#4ECDC4',
+                    padding: { x: 20, y: 10 }
+                });
+                shareBtn.setOrigin(0.5);
+                shareBtn.setInteractive({ useHandCursor: true });
+                shareBtn.on('pointerdown', async () => {
+                    const success = await window.gifManager.shareGif(gifBlob, {
+                        title: 'Tower Stacker',
+                        text: `타워 스태커에서 ${this.finalScore}점을 기록했어요! 🏗️`
+                    });
+                    if (success) {
+                        shareBtn.destroy();
+                    }
+                });
+
+                // 3초 후 자동으로 제거
+                this.time.delayedCall(3000, () => {
+                    if (shareBtn && shareBtn.active) {
+                        this.tweens.add({
+                            targets: shareBtn,
+                            alpha: 0,
+                            duration: 300,
+                            onComplete: () => shareBtn.destroy()
+                        });
+                    }
+                });
+            }
+
+            console.log('GIF 저장 완료:', filename, `(${(gifBlob.size / 1024).toFixed(2)} KB)`);
+        } catch (error) {
+            console.error('GIF 생성 오류:', error);
+            this.showMessage('❌ GIF 생성 실패', 0xFF6B6B);
         }
     }
 }

@@ -18,6 +18,12 @@ class BootScene extends Phaser.Scene {
     create() {
         console.log('BootScene: Assets loaded');
 
+        // GifManager 초기화
+        if (typeof window.gifManager === 'undefined') {
+            window.gifManager = new GifManager();
+            console.log('✅ GifManager initialized');
+        }
+
         // 메인 메뉴로 이동
         this.scene.start('MainMenuScene');
     }

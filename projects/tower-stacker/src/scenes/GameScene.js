@@ -64,6 +64,11 @@ class GameScene extends Phaser.Scene {
             skinId: window.dataManager.getCurrentSkin()
         });
 
+        // GIF 녹화 시작
+        if (window.gifManager) {
+            window.gifManager.startRecording(this.game.canvas);
+        }
+
         // UI 생성
         this.createUI();
 
@@ -399,6 +404,11 @@ class GameScene extends Phaser.Scene {
         if (this.isGhostMode && this.replayIterator) {
             this.updateGhostReplay();
         }
+
+        // GIF 프레임 캡처
+        if (window.gifManager && window.gifManager.isCurrentlyRecording()) {
+            window.gifManager.captureFrame();
+        }
     }
 
     updateTowerHeight() {
@@ -487,6 +497,11 @@ class GameScene extends Phaser.Scene {
             blockCount: this.blockCount
         });
         window.replayManager.stopRecording();
+
+        // GIF 녹화 중지
+        if (window.gifManager && window.gifManager.isCurrentlyRecording()) {
+            window.gifManager.stopRecording();
+        }
 
         // 게임 오버 씬으로 전환
         this.time.delayedCall(1000, () => {
