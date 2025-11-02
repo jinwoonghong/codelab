@@ -30,8 +30,21 @@ class BootScene extends Phaser.Scene {
             console.log('✅ SoundManager initialized');
         }
 
-        // 메인 메뉴로 이동
-        this.scene.start('MainMenuScene');
+        // 튜토리얼 완료 여부 확인
+        let tutorialCompleted = false;
+        try {
+            tutorialCompleted = localStorage.getItem('towerStacker_tutorialCompleted') === 'true';
+        } catch (error) {
+            console.error('튜토리얼 상태 확인 실패:', error);
+            tutorialCompleted = true; // 오류 시 튜토리얼 건너뛰기
+        }
+
+        // 첫 방문이면 튜토리얼, 아니면 메인 메뉴
+        if (!tutorialCompleted) {
+            this.scene.start('TutorialScene');
+        } else {
+            this.scene.start('MainMenuScene');
+        }
     }
 
     createLoadingScreen() {

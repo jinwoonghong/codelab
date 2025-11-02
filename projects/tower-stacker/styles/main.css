@@ -53,3 +53,56 @@ body {
 * {
     -webkit-tap-highlight-color: transparent;
 }
+
+/* 캔버스 스케일링 (모바일 최적화) */
+canvas {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+/* 세로 모드 경고 (선택적) */
+@media screen and (orientation: portrait) and (max-width: 768px) {
+    #game-container::before {
+        content: '가로 모드를 권장합니다 🔄';
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 107, 107, 0.9);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        z-index: 9999;
+        pointer-events: none;
+    }
+}
+
+/* 모바일 주소창 숨김 (iOS Safari) */
+@supports (-webkit-touch-callout: none) {
+    body {
+        height: -webkit-fill-available;
+    }
+}
+
+/* 성능 최적화 */
+#game-container {
+    will-change: transform;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+}
+
+/* 저사양 기기를 위한 간단한 애니메이션 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

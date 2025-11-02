@@ -340,6 +340,9 @@ class GameScene extends Phaser.Scene {
             }
         }
 
+        // 진동 피드백 (모바일)
+        this.vibrateDevice(10);
+
         // 가속 블록 보너스 점수
         if (this.currentBlock.type === 'speed' && props.bonusScore) {
             this.score += props.bonusScore;
@@ -475,8 +478,103 @@ class GameScene extends Phaser.Scene {
     }
 
     pauseGame() {
-        console.log('Game paused');
-        // TODO: 일시정지 기능 구현
+        if (this.isGameOver) return;
+
+        // 물리 엔진 일시정지
+        this.matter.world.pause();
+
+        // 일시정지 오버레이
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const pauseOverlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8);
+        pauseOverlay.setOrigin(0);
+        pauseOverlay.setDepth(1000);
+
+        const pauseText = this.add.text(width / 2, height / 2 - 80, '일시정지', {
+            font: 'bold 48px Arial',
+            fill: '#4ECDC4',
+            stroke: '#000000',
+            strokeThickness: 4
+        });
+        pauseText.setOrigin(0.5);
+        pauseText.setDepth(1001);
+
+        // 계속하기 버튼
+        const resumeBtn = this.createPauseButton(width / 2, height / 2, '▶ 계속하기', () => {
+            // 물리 엔진 재개
+            this.matter.world.resume();
+            // UI 제거
+            pauseOverlay.destroy();
+            pauseText.destroy();
+            resumeBtn.destroy();
+            quitBtn.destroy();
+
+            // 버튼 클릭 사운드
+            if (window.soundManager) {
+                window.soundManager.playButtonClick();
+            }
+        });
+
+        // 나가기 버튼
+        const quitBtn = this.createPauseButton(width / 2, height / 2 + 80, '나가기', () => {
+            // 물리 엔진 재개 (씬 정리를 위해)
+            this.matter.world.resume();
+
+            // 버튼 클릭 사운드
+            if (window.soundManager) {
+                window.soundManager.playButtonClick();
+            }
+
+            // 메인 메뉴로
+            this.scene.start('MainMenuScene');
+        });
+
+        // 사운드 재생
+        if (window.soundManager) {
+            window.soundManager.playButtonClick();
+        }
+    }
+
+    createPauseButton(x, y, label, callback) {
+        const button = this.add.container(x, y);
+        button.setDepth(1001);
+
+        // 버튼 배경
+        const bg = this.add.rectangle(0, 0, 280, 60, 0x4ECDC4, 0.9);
+        bg.setInteractive({ useHandCursor: true });
+
+        // 버튼 텍스트
+        const text = this.add.text(0, 0, label, {
+            font: 'bold 22px Arial',
+            fill: '#ffffff'
+        });
+        text.setOrigin(0.5);
+
+        button.add([bg, text]);
+
+        // 호버 효과
+        bg.on('pointerover', () => {
+            bg.setFillStyle(0x95E1D3);
+        });
+
+        bg.on('pointerout', () => {
+            bg.setFillStyle(0x4ECDC4, 0.9);
+        });
+
+        // 클릭 이벤트
+        bg.on('pointerdown', () => {
+            this.tweens.add({
+                targets: button,
+                scaleX: 0.95,
+                scaleY: 0.95,
+                duration: 50,
+                yoyo: true,
+                onComplete: callback
+            });
+        });
+
+        return button;
     }
 
     gameOver() {
@@ -489,6 +587,9 @@ class GameScene extends Phaser.Scene {
         if (window.soundManager) {
             window.soundManager.playGameOver();
         }
+
+        // 진동 피드백 (강함)
+        this.vibrateDevice([100, 50, 100]);
 
         // 코인 계산
         const earnedCoins = this.calculateEarnedCoins();
@@ -1113,5 +1214,20 @@ class GameScene extends Phaser.Scene {
             if (ghostBlock.icon) ghostBlock.icon.destroy();
             if (ghostBlock.body) this.matter.world.remove(ghostBlock.body);
         });
+    }
+
+    /**
+     * 진동 피드백 (모바일 디바이스)
+     * @param {number} duration - 진동 시간 (밀리초)
+     */
+    vibrateDevice(duration = 10) {
+        // Vibration API 지원 여부 확인
+        if ('vibrate' in navigator && window.TowerStacker.vibrationEnabled !== false) {
+            try {
+                navigator.vibrate(duration);
+            } catch (error) {
+                console.warn('진동 실패:', error);
+            }
+        }
     }
 }

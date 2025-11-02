@@ -42,7 +42,31 @@ const GameConfig = {
     render: {
         pixelArt: false,
         antialias: true,
-        roundPixels: true
+        roundPixels: true,
+        transparent: false,
+        clearBeforeRender: true,
+        powerPreference: 'high-performance', // GPU 사용 우선
+        batchSize: 4096, // 배치 사이즈 증가 (성능 향상)
+        maxTextures: 16
+    },
+
+    // FPS 설정
+    fps: {
+        target: 60,
+        forceSetTimeOut: false,
+        min: 30,
+        smoothStep: true
+    },
+
+    // DOM 설정
+    dom: {
+        createContainer: false
+    },
+
+    // 오디오 설정
+    audio: {
+        disableWebAudio: false,
+        noAudio: false
     },
 
     // 게임 플레이 설정

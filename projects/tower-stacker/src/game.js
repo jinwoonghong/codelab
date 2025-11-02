@@ -8,6 +8,7 @@ const config = {
     ...GameConfig,
     scene: [
         BootScene,
+        TutorialScene,
         MainMenuScene,
         GameScene,
         GameOverScene,
