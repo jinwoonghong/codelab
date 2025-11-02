@@ -5,7 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#4ECDC4">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="블록을 쌓아 최고 기록을 만드세요! 4가지 게임 모드, 특수 블록, 스킨 시스템이 있는 중독성 있는 퍼즐 게임">
+    <meta name="keywords" content="타워 스태커, tower stacker, 블록 쌓기, 퍼즐 게임, 웹 게임, 모바일 게임">
+    <meta name="author" content="Tower Stacker Team">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="game">
+    <meta property="og:title" content="타워 스태커 - Tower Stacker">
+    <meta property="og:description" content="블록을 쌓아 최고 기록을 만드세요!">
+    <meta property="og:url" content="https://tower-stacker.app">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-192x192.png">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
     <title>타워 스태커 - Tower Stacker</title>
     <link rel="stylesheet" href="styles/main.css">
 </head>
@@ -51,5 +72,82 @@
 
     <!-- 메인 게임 파일 -->
     <script src="src/game.js"></script>
+
+    <!-- PWA Service Worker 등록 -->
+    <script>
+        // Service Worker 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+
+                        // 업데이트 확인
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // 새 버전 사용 가능
+                                    console.log('🆕 New version available!');
+                                    if (confirm('새로운 버전이 있습니다. 업데이트하시겠습니까?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('❌ Service Worker registration failed:', error);
+                    });
+
+                // Service Worker 업데이트 시 페이지 새로고침
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
+            });
+        }
+
+        // PWA 설치 프롬프트
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // 기본 프롬프트 방지
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // 설치 버튼 표시 (선택적)
+            console.log('💾 PWA installation available');
+
+            // 5초 후 설치 프롬프트 표시 (한 번만)
+            const installPromptShown = localStorage.getItem('installPromptShown');
+            if (!installPromptShown) {
+                setTimeout(() => {
+                    if (confirm('타워 스태커를 홈 화면에 추가하시겠습니까?\n오프라인에서도 플레이할 수 있습니다!')) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                                console.log('✅ User accepted PWA install');
+                            } else {
+                                console.log('❌ User dismissed PWA install');
+                            }
+                            deferredPrompt = null;
+                        });
+                    }
+                    localStorage.setItem('installPromptShown', 'true');
+                }, 5000);
+            }
+        });
+
+        // PWA 설치 완료
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA installed successfully');
+            deferredPrompt = null;
+        });
+    </script>
 </body>
 </html>
