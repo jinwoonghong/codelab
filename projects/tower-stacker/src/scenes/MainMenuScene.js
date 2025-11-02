@@ -55,17 +55,26 @@ class MainMenuScene extends Phaser.Scene {
 
         // 하단 버튼들 (작게)
         const buttonY = 490;
-        const shopButton = this.createButton(width / 2 - 130, buttonY, '🎁 상점', () => {
+        const shopButton = this.createButton(width / 2 - 200, buttonY, '🎁 상점', () => {
             this.scene.start('ShopScene');
         });
-        shopButton.scaleX = 0.7;
-        shopButton.scaleY = 0.7;
+        shopButton.scaleX = 0.65;
+        shopButton.scaleY = 0.65;
 
-        const museumButton = this.createButton(width / 2 + 130, buttonY, '🏛️ 박물관', () => {
+        const challengeButton = this.createButton(width / 2, buttonY, '🏆 챌린지', () => {
+            // 고스트 모드 플래그 초기화
+            window.TowerStacker.isGhostMode = false;
+            window.TowerStacker.currentReplayData = null;
+            this.scene.start('ChallengeScene');
+        });
+        challengeButton.scaleX = 0.65;
+        challengeButton.scaleY = 0.65;
+
+        const museumButton = this.createButton(width / 2 + 200, buttonY, '🏛️ 박물관', () => {
             this.scene.start('MuseumScene');
         });
-        museumButton.scaleX = 0.7;
-        museumButton.scaleY = 0.7;
+        museumButton.scaleX = 0.65;
+        museumButton.scaleY = 0.65;
 
         // 칭호 표시
         const titleId = window.dataManager.getCurrentTitle();
@@ -151,6 +160,9 @@ class MainMenuScene extends Phaser.Scene {
     startGame(mode) {
         console.log('Starting game mode:', mode);
         window.TowerStacker.currentMode = mode;
+        // 일반 모드에서는 고스트 모드 비활성화
+        window.TowerStacker.isGhostMode = false;
+        window.TowerStacker.currentReplayData = null;
         this.scene.start('GameScene');
     }
 }

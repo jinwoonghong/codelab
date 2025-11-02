@@ -12,7 +12,8 @@ const config = {
         GameScene,
         GameOverScene,
         ShopScene,
-        MuseumScene
+        MuseumScene,
+        ChallengeScene
     ]
 };
 

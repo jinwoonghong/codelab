@@ -21,6 +21,18 @@ class GameScene extends Phaser.Scene {
         const currentSkinId = window.dataManager.getCurrentSkin();
         this.currentSkin = window.dataManager.getSkinById(currentSkinId);
 
+        // 고스트 모드 확인
+        this.isGhostMode = window.TowerStacker.isGhostMode || false;
+        this.replayData = window.TowerStacker.currentReplayData || null;
+
+        if (this.isGhostMode && this.replayData) {
+            // 리플레이 반복자 생성
+            this.replayIterator = window.replayManager.createReplayIterator(this.replayData);
+            this.replayStartTime = Date.now();
+            this.ghostBlocks = [];
+            console.log('고스트 모드 시작:', this.replayData.metadata);
+        }
+
         // 게임 상태 초기화
         this.score = 0;
         this.currentHeight = 0;
@@ -381,6 +393,11 @@ class GameScene extends Phaser.Scene {
         // 퍼즐 모드: 목표 달성 체크
         if (this.gameMode === 'puzzle') {
             this.checkStageGoal();
+        }
+
+        // 고스트 모드: 리플레이 재생
+        if (this.isGhostMode && this.replayIterator) {
+            this.updateGhostReplay();
         }
     }
 
@@ -954,5 +971,112 @@ class GameScene extends Phaser.Scene {
         if (!this.stageGoal) return '';
 
         return `목표: ${this.stageGoal.description}`;
+    }
+
+    // ===== 고스트 리플레이 함수들 =====
+
+    /**
+     * 고스트 리플레이 업데이트
+     */
+    updateGhostReplay() {
+        if (!this.replayIterator) return;
+
+        const currentTime = Date.now() - this.replayStartTime;
+        const events = this.replayIterator.getNext(currentTime);
+
+        events.forEach(event => {
+            this.processGhostEvent(event);
+        });
+
+        // 고스트 블록 위치 업데이트 (물리 시뮬레이션)
+        this.ghostBlocks.forEach(ghostBlock => {
+            if (ghostBlock.body && ghostBlock.graphics) {
+                ghostBlock.graphics.x = ghostBlock.body.position.x;
+                ghostBlock.graphics.y = ghostBlock.body.position.y;
+                ghostBlock.graphics.rotation = ghostBlock.body.angle;
+
+                if (ghostBlock.icon) {
+                    ghostBlock.icon.x = ghostBlock.body.position.x;
+                    ghostBlock.icon.y = ghostBlock.body.position.y;
+                    ghostBlock.icon.rotation = ghostBlock.body.angle;
+                }
+            }
+        });
+    }
+
+    /**
+     * 고스트 이벤트 처리
+     */
+    processGhostEvent(event) {
+        switch (event.type) {
+            case 'drop':
+                this.createGhostBlock(event);
+                break;
+            case 'environment':
+                // 환경 효과는 이미 플레이어에게도 적용됨
+                console.log('고스트 환경 효과:', event.effectType);
+                break;
+        }
+    }
+
+    /**
+     * 고스트 블록 생성
+     */
+    createGhostBlock(event) {
+        const blockConfig = GameConfig.gameplay.block;
+        const blockInfo = this.getBlockInfo(event.blockType);
+
+        // 그래픽 객체 (반투명)
+        const graphics = this.add.rectangle(
+            event.x,
+            event.y,
+            blockConfig.width,
+            blockConfig.height,
+            blockInfo.color,
+            0.3 // 반투명
+        );
+        graphics.setStrokeStyle(2, 0xFFFFFF, 0.5);
+        graphics.setDepth(-1); // 플레이어 블록 뒤에 표시
+
+        // 아이콘 (반투명)
+        const icon = this.add.text(event.x, event.y, blockInfo.icon, {
+            font: 'bold 20px Arial',
+            fill: '#ffffff',
+            alpha: 0.3
+        });
+        icon.setOrigin(0.5);
+        icon.setDepth(-1);
+
+        // 물리 바디 생성 (센서 모드 - 충돌 없음)
+        const body = this.matter.add.rectangle(
+            event.x,
+            event.y,
+            blockConfig.width,
+            blockConfig.height,
+            {
+                friction: blockInfo.properties.friction || blockConfig.friction,
+                restitution: blockInfo.properties.restitution || blockConfig.restitution,
+                density: blockInfo.properties.density || blockConfig.density,
+                isSensor: true, // 충돌 없음
+                label: 'ghost_' + event.blockType
+            }
+        );
+
+        const ghostBlock = {
+            graphics: graphics,
+            icon: icon,
+            body: body,
+            type: event.blockType,
+            isGhost: true
+        };
+
+        this.ghostBlocks.push(ghostBlock);
+
+        // 고스트 블록이 화면 밖으로 떨어지면 제거
+        this.time.delayedCall(30000, () => {
+            if (ghostBlock.graphics) ghostBlock.graphics.destroy();
+            if (ghostBlock.icon) ghostBlock.icon.destroy();
+            if (ghostBlock.body) this.matter.world.remove(ghostBlock.body);
+        });
     }
 }
