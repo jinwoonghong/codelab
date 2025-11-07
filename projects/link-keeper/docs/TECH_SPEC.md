@@ -1,89 +1,122 @@
 # Link Keeper 기술 문서
 
-## 🏗 기술 아키텍처
+## 🏗 기술 아키텍처 (공유 중심 설계)
 
 ### 전체 구조
 ```
 ┌─────────────────────────────────────┐
-│         User Interface              │
-│    (HTML + CSS + JavaScript)        │
+│      외부 앱 (유튜브, 크롬 등)        │
+│         [공유 버튼] 클릭             │
 └────────────┬────────────────────────┘
              │
-┌────────────▼────────────────────────┐
-│      Application Layer              │
-│  - LinkManager (비즈니스 로직)       │
-│  - UIController (UI 업데이트)        │
-│  - EventHandler (사용자 이벤트)      │
+             │ Web Share API
+             ↓
+┌─────────────────────────────────────┐
+│       Service Worker                │
+│  - 공유 데이터 수신 (/share)         │
+│  - 임시 저장 (IndexedDB)             │
+│  - /share-confirm으로 리다이렉트     │
 └────────────┬────────────────────────┘
              │
-┌────────────▼────────────────────────┐
-│       Data Layer                    │
-│  - StorageManager (데이터 저장)      │
-│  - IndexedDB / LocalStorage         │
+             ↓
+┌─────────────────────────────────────┐
+│      Link Keeper App (PWA)          │
+│  ┌─────────────────────────────┐    │
+│  │ Share Confirm Screen        │    │
+│  │ - URL, 제목 표시            │    │
+│  │ - 메모 입력 (선택)          │    │
+│  │ - 저장 버튼                 │    │
+│  └────────┬────────────────────┘    │
+│           │                         │
+│  ┌────────▼────────────────────┐    │
+│  │ Application Layer           │    │
+│  │ - LinkManager               │    │
+│  │ - UIController              │    │
+│  └────────┬────────────────────┘    │
+│           │                         │
+│  ┌────────▼────────────────────┐    │
+│  │ Data Layer (IndexedDB)      │    │
+│  │ - links store               │    │
+│  │ - categories store          │    │
+│  └─────────────────────────────┘    │
 └─────────────────────────────────────┘
 ```
 
-### 레이어 설명
+### 공유 데이터 플로우
 
-#### 1. User Interface Layer
-- 사용자가 직접 상호작용하는 화면
-- Responsive Web Design으로 모바일 최적화
-- CSS Grid/Flexbox 활용한 레이아웃
-- Touch-friendly UI (44x44px 이상 터치 영역)
-
-#### 2. Application Layer
-- 비즈니스 로직 처리
-- 상태 관리
-- UI 업데이트 조율
-- 이벤트 핸들링
-
-#### 3. Data Layer
-- 데이터 영속성 관리
-- CRUD 연산 수행
-- 데이터 검증 및 무결성 보장
+```
+1. [외부 앱] 공유 버튼 → "Link Keeper" 선택
+   ↓
+2. [OS] Web Share Target API 호출
+   → POST /share {title, url, text}
+   ↓
+3. [Service Worker] fetch 이벤트 캐치
+   - formData 파싱
+   - sharedData를 임시 IndexedDB에 저장
+   - Response.redirect('/share-confirm', 303)
+   ↓
+4. [App] /share-confirm 페이지 열림
+   - 임시 저장된 공유 데이터 로드
+   - UI에 표시 (제목, URL, 썸네일 등)
+   - 사용자가 메모 추가 (선택)
+   ↓
+5. [User] 저장 버튼 클릭
+   ↓
+6. [App] IndexedDB links store에 최종 저장
+   - 메타데이터 추출 (비동기)
+   - 링크 객체 생성
+   - 저장 완료 토스트
+   ↓
+7. [OS] 원래 앱으로 복귀
+```
 
 ---
 
 ## 🛠 기술 스택
 
 ### Frontend
-- **HTML5**: 시맨틱 마크업, Web Components (선택)
+- **HTML5**: 시맨틱 마크업
 - **CSS3**:
   - CSS Variables (테마 관리)
   - CSS Grid & Flexbox (레이아웃)
-  - CSS Animations (부드러운 전환)
+  - CSS Transitions (부드러운 애니메이션)
 - **JavaScript (ES6+)**:
-  - Vanilla JS (프레임워크 없이 가볍게)
-  - 또는 React/Vue.js (Phase 2에서 고려)
+  - Vanilla JS (가볍게)
   - Async/Await (비동기 처리)
-  - Modules (코드 모듈화)
+  - ES Modules (코드 모듈화)
+
+### PWA 핵심 기술 (MVP 필수!)
+- **Service Worker**:
+  - 오프라인 지원
+  - 공유 데이터 수신 및 처리
+  - 캐싱 전략
+- **Web App Manifest**:
+  - 홈 화면 추가
+  - **share_target 설정 (핵심!)**
+  - 앱 아이콘 및 테마
+- **Web Share Target API**:
+  - 시스템 공유 메뉴 통합
+  - 다른 앱에서 링크 수신
 
 ### 데이터 저장소
 - **Primary**: IndexedDB
-  - 대용량 데이터 저장 (수백 MB)
-  - 구조화된 데이터 저장
-  - 인덱싱을 통한 빠른 검색
+  - links: 링크 데이터 (제목, URL, 메타데이터 등)
+  - sharedData: 공유받은 임시 데이터
+  - categories: 카테고리 정보
 - **Secondary**: LocalStorage
-  - 설정 데이터 저장
-  - 간단한 key-value 저장
-
-### PWA 기능
-- **Service Worker**: 오프라인 지원, 캐싱
-- **Web App Manifest**: 홈 화면 추가, 앱처럼 실행
-- **Web Share API**: 다른 앱에서 링크 받기
-- **Web Share Target API**: 시스템 공유 메뉴에 등록
+  - 설정 데이터
+  - 간단한 key-value
 
 ### 개발 도구
-- **번들러**: Vite (빠른 개발 서버, HMR)
+- **번들러**: Vite (빠른 개발 서버)
 - **패키지 매니저**: npm
-- **테스팅**: Jest (유닛 테스트), Playwright (E2E 테스트)
-- **포맷터**: Prettier
-- **린터**: ESLint
+- **테스팅**: Jest (유닛), Playwright (E2E)
+- **린터**: ESLint + Prettier
 
 ### 배포
-- **호스팅**: Vercel / Netlify / GitHub Pages
-- **도메인**: *.vercel.app (무료) → 커스텀 도메인 (선택)
+- **호스팅**: Vercel / Netlify
 - **HTTPS**: 필수 (PWA 요구사항)
+- **도메인**: *.vercel.app → 커스텀 도메인
 
 ---
 
@@ -93,324 +126,795 @@
 ```javascript
 {
   id: String,              // UUID v4
-  url: String,             // 원본 URL (필수)
-  title: String,           // 제목 (자동 추출 또는 수동 입력)
-  description: String,     // 설명/메모 (선택)
-  thumbnail: String,       // 썸네일 이미지 URL (선택)
-  favicon: String,         // 파비콘 URL (선택)
-  isRead: Boolean,         // 읽음 상태 (기본값: false)
-  category: String,        // 카테고리 (선택)
-  tags: Array<String>,     // 태그 목록 (선택)
-  createdAt: Timestamp,    // 생성 시간
+  url: String,             // 원본 URL (필수, unique)
+  title: String,           // 제목
+  description: String,     // 설명/메모
+  thumbnail: String,       // 썸네일 이미지 URL
+  favicon: String,         // 파비콘 URL
+  domain: String,          // 도메인 (예: youtube.com)
+
+  isRead: Boolean,         // 읽음 상태 (기본: false)
+  category: String,        // 카테고리 ID (선택)
+  tags: Array<String>,     // 태그 목록
+
+  createdAt: Timestamp,    // 저장 시간
   updatedAt: Timestamp,    // 수정 시간
   readAt: Timestamp|null,  // 읽은 시간
-  domain: String,          // 도메인 (자동 추출, 예: youtube.com)
-  metadata: {              // 추가 메타데이터
+
+  // 공유받은 경우
+  sharedFrom: String,      // 'share-api' | 'manual'
+  sharedText: String,      // 공유 시 전달된 텍스트
+
+  metadata: {
     author: String,
     publishDate: String,
-    contentType: String    // article, video, etc.
+    contentType: String,   // 'article' | 'video' | 'image' | 'other'
+    duration: Number       // 동영상 길이 (초)
   }
+}
+```
+
+### SharedData Entity (임시 저장)
+```javascript
+{
+  id: String,              // 임시 ID
+  url: String,
+  title: String,
+  text: String,
+  timestamp: Timestamp,    // 공유받은 시간
+  processed: Boolean       // 처리 완료 여부
 }
 ```
 
 ### Category Entity
 ```javascript
 {
-  id: String,              // UUID v4
-  name: String,            // 카테고리 이름
-  icon: String,            // 이모지 또는 아이콘
-  color: String,           // 색상 코드
-  linkCount: Number,       // 링크 개수 (캐시)
+  id: String,
+  name: String,
+  icon: String,            // 이모지
+  color: String,           // HEX 색상
+  linkCount: Number,       // 캐시된 링크 수
   createdAt: Timestamp
 }
 ```
 
-### Settings Entity
-```javascript
-{
-  theme: String,           // 'light' | 'dark' | 'auto'
-  defaultView: String,     // 'all' | 'unread' | 'read'
-  sortBy: String,          // 'date' | 'title' | 'domain'
-  sortOrder: String,       // 'asc' | 'desc'
-  groupBy: String,         // 'date' | 'category' | 'none'
-  notifications: Boolean,
-  autoExtractMetadata: Boolean
-}
-```
-
 ---
 
-## 🗄 데이터베이스 설계 (IndexedDB)
+## 🗄 IndexedDB 설계
 
-### Database: LinkKeeperDB
-- **Version**: 1
-
-### Object Stores
-
-#### 1. links
-- **keyPath**: `id`
-- **indexes**:
-  - `url` (unique)
-  - `isRead`
-  - `category`
-  - `createdAt`
-  - `domain`
+### Database: LinkKeeperDB (version 1)
 
 ```javascript
-const linksStore = db.createObjectStore('links', { keyPath: 'id' });
-linksStore.createIndex('url', 'url', { unique: true });
-linksStore.createIndex('isRead', 'isRead', { unique: false });
-linksStore.createIndex('category', 'category', { unique: false });
-linksStore.createIndex('createdAt', 'createdAt', { unique: false });
-linksStore.createIndex('domain', 'domain', { unique: false });
-```
+const DB_NAME = 'LinkKeeperDB';
+const DB_VERSION = 1;
 
-#### 2. categories
-- **keyPath**: `id`
-- **indexes**:
-  - `name` (unique)
+const openDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-#### 3. settings
-- **keyPath**: `key`
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
 
----
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
 
-## 🔌 API 설계 (내부 API)
+      // 1. links store
+      if (!db.objectStoreNames.contains('links')) {
+        const linksStore = db.createObjectStore('links', { keyPath: 'id' });
+        linksStore.createIndex('url', 'url', { unique: true });
+        linksStore.createIndex('isRead', 'isRead', { unique: false });
+        linksStore.createIndex('createdAt', 'createdAt', { unique: false });
+        linksStore.createIndex('domain', 'domain', { unique: false });
+        linksStore.createIndex('category', 'category', { unique: false });
+      }
 
-### StorageManager API
+      // 2. sharedData store (임시 저장)
+      if (!db.objectStoreNames.contains('sharedData')) {
+        const sharedStore = db.createObjectStore('sharedData', { keyPath: 'id' });
+        sharedStore.createIndex('processed', 'processed', { unique: false });
+        sharedStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
 
-#### Link 관련
-```javascript
-class StorageManager {
-  // 링크 생성
-  async createLink(linkData)
+      // 3. categories store
+      if (!db.objectStoreNames.contains('categories')) {
+        const categoriesStore = db.createObjectStore('categories', { keyPath: 'id' });
+        categoriesStore.createIndex('name', 'name', { unique: true });
+      }
 
-  // 링크 조회
-  async getLink(id)
-  async getAllLinks(options = { sortBy, order, filter })
-  async getLinksByCategory(category)
-  async getUnreadLinks()
-  async getReadLinks()
-
-  // 링크 업데이트
-  async updateLink(id, updates)
-  async markAsRead(id)
-  async markAsUnread(id)
-
-  // 링크 삭제
-  async deleteLink(id)
-  async deleteLinks(ids)
-
-  // 검색
-  async searchLinks(query)
-}
-```
-
-#### Category 관련
-```javascript
-class StorageManager {
-  async createCategory(categoryData)
-  async getAllCategories()
-  async updateCategory(id, updates)
-  async deleteCategory(id)
-}
-```
-
-#### Settings 관련
-```javascript
-class StorageManager {
-  async getSetting(key)
-  async setSetting(key, value)
-  async getAllSettings()
-}
-```
-
----
-
-## 🎨 UI 컴포넌트 구조
-
-### 1. AppShell (전체 레이아웃)
-```
-<div id="app">
-  <header>
-    <TopBar />
-  </header>
-
-  <main>
-    <FilterBar />
-    <LinkList />
-  </main>
-
-  <footer>
-    <BottomNav />
-  </footer>
-
-  <FloatingActionButton />
-  <Modal />
-  <Toast />
-</div>
-```
-
-### 2. 주요 컴포넌트
-
-#### LinkCard
-```javascript
-// 링크 카드 컴포넌트
-class LinkCard {
-  constructor(linkData) {
-    this.data = linkData;
-  }
-
-  render() {
-    // HTML 생성
-  }
-
-  onToggleRead() {
-    // 읽음 상태 토글
-  }
-
-  onDelete() {
-    // 삭제
-  }
-
-  onEdit() {
-    // 편집
-  }
-}
-```
-
-#### LinkList
-```javascript
-class LinkList {
-  constructor(links) {
-    this.links = links;
-    this.groupBy = 'date'; // 'date' | 'category' | 'none'
-  }
-
-  groupLinks() {
-    // 날짜별 또는 카테고리별로 그룹화
-  }
-
-  render() {
-    // 그룹화된 링크 목록 렌더링
-  }
-
-  onScroll() {
-    // 무한 스크롤 (선택)
-  }
-}
-```
-
-#### AddLinkModal
-```javascript
-class AddLinkModal {
-  show() {
-    // 모달 표시
-  }
-
-  hide() {
-    // 모달 숨김
-  }
-
-  async extractMetadata(url) {
-    // URL에서 메타데이터 추출
-  }
-
-  onSubmit() {
-    // 링크 저장
-  }
-}
-```
-
----
-
-## 🔍 메타데이터 추출 전략
-
-### 방법 1: 클라이언트 사이드 추출 (기본)
-```javascript
-async function extractMetadata(url) {
-  try {
-    // CORS 이슈로 직접 fetch는 어려울 수 있음
-    const response = await fetch(url);
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    return {
-      title: doc.querySelector('title')?.textContent,
-      description: doc.querySelector('meta[name="description"]')?.content,
-      thumbnail: doc.querySelector('meta[property="og:image"]')?.content,
-      favicon: doc.querySelector('link[rel="icon"]')?.href
+      // 4. settings store
+      if (!db.objectStoreNames.contains('settings')) {
+        db.createObjectStore('settings', { keyPath: 'key' });
+      }
     };
-  } catch (error) {
-    // 실패 시 기본값 반환
-    return { title: url };
+  });
+};
+```
+
+---
+
+## 🚀 핵심 구현: Web Share Target API
+
+### 1. manifest.json 설정
+
+```json
+{
+  "name": "Link Keeper",
+  "short_name": "LinkKeeper",
+  "description": "모바일 링크 관리 PWA",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2196F3",
+  "orientation": "portrait-primary",
+
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+
+  // 🔥 핵심: Web Share Target 설정
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
   }
 }
 ```
 
-### 방법 2: 외부 API 사용 (대안)
-- **Link Preview API**: https://www.linkpreview.net/
-- **OpenGraph.io**: https://www.opengraph.io/
-- **Microlink**: https://microlink.io/
+### 2. Service Worker 구현
 
-단, 무료 API는 요청 제한이 있으므로 캐싱 필요
-
-### 방법 3: 백엔드 프록시 (Phase 3+)
-- CORS 우회를 위한 자체 백엔드 구축
-- 메타데이터 캐싱으로 성능 향상
-
----
-
-## 🚀 성능 최적화
-
-### 1. 데이터 로딩
-- **Lazy Loading**: 스크롤 시 점진적으로 로드
-- **Virtual Scrolling**: 대량 데이터 처리 시 (Phase 2)
-- **Pagination**: 페이지 단위 로딩
-
-### 2. 이미지 최적화
-- **Lazy Image Loading**: Intersection Observer 활용
-- **Placeholder**: 썸네일 로딩 중 스켈레톤 UI
-- **CDN**: 외부 이미지는 캐싱
-
-### 3. 캐싱 전략
 ```javascript
-// Service Worker 캐싱
+// sw.js
+const CACHE_NAME = 'link-keeper-v1';
+const URLS_TO_CACHE = [
+  '/',
+  '/index.html',
+  '/share-confirm.html',
+  '/styles/main.css',
+  '/src/app.js',
+  '/manifest.json'
+];
+
+// 설치
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(URLS_TO_CACHE);
+    })
+  );
+  self.skipWaiting();
+});
+
+// 활성화
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// 🔥 핵심: Fetch 이벤트에서 공유 데이터 처리
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Web Share Target API 요청 처리
+  if (url.pathname === '/share' && event.request.method === 'POST') {
+    event.respondWith(handleShare(event.request));
+    return;
+  }
+
+  // 일반 fetch 요청: 캐시 우선 전략
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
     })
   );
 });
+
+// 공유 데이터 처리 함수
+async function handleShare(request) {
+  try {
+    const formData = await request.formData();
+    const url = formData.get('url') || '';
+    const title = formData.get('title') || '';
+    const text = formData.get('text') || '';
+
+    // IndexedDB에 임시 저장
+    const sharedData = {
+      id: crypto.randomUUID(),
+      url: url || text, // URL이 없으면 text에서 추출 시도
+      title: title,
+      text: text,
+      timestamp: Date.now(),
+      processed: false
+    };
+
+    // IndexedDB 저장
+    await saveSharedData(sharedData);
+
+    // 공유 확인 페이지로 리다이렉트
+    return Response.redirect('/share-confirm?id=' + sharedData.id, 303);
+  } catch (error) {
+    console.error('Error handling share:', error);
+    return Response.redirect('/', 303);
+  }
+}
+
+// IndexedDB 저장 함수 (Service Worker 내)
+async function saveSharedData(data) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('LinkKeeperDB', 1);
+
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(['sharedData'], 'readwrite');
+      const store = transaction.objectStore('sharedData');
+      const addRequest = store.add(data);
+
+      addRequest.onsuccess = () => resolve();
+      addRequest.onerror = () => reject(addRequest.error);
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
 ```
 
-### 4. 번들 최적화
-- **Code Splitting**: 라우트별 코드 분할
-- **Tree Shaking**: 사용하지 않는 코드 제거
-- **Minification**: CSS/JS 압축
+### 3. 앱에서 공유 데이터 처리
+
+```javascript
+// src/share-handler.js
+class ShareHandler {
+  constructor(storageManager, uiController) {
+    this.storage = storageManager;
+    this.ui = uiController;
+  }
+
+  // 공유받은 데이터 로드
+  async loadSharedData(shareId) {
+    const sharedData = await this.storage.getSharedData(shareId);
+
+    if (!sharedData || sharedData.processed) {
+      return null;
+    }
+
+    return {
+      url: this.extractURL(sharedData.url || sharedData.text),
+      title: sharedData.title,
+      text: sharedData.text
+    };
+  }
+
+  // URL 추출 (text에서)
+  extractURL(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const match = text.match(urlRegex);
+    return match ? match[0] : text;
+  }
+
+  // 메타데이터 추출 (비동기)
+  async fetchMetadata(url) {
+    try {
+      // CORS 이슈로 직접 fetch는 어려울 수 있음
+      // 대안: Open Graph Scraper API 또는 자체 백엔드 프록시
+
+      // 간단한 방법: URL에서 도메인과 파비콘만 추출
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace('www.', '');
+      const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
+      return {
+        domain,
+        favicon,
+        title: null,  // 사용자가 입력한 title 사용
+        thumbnail: null
+      };
+    } catch (error) {
+      return {
+        domain: new URL(url).hostname,
+        favicon: null,
+        title: null,
+        thumbnail: null
+      };
+    }
+  }
+
+  // 링크 저장
+  async saveLink(data) {
+    const { url, title, note, category } = data;
+
+    // 메타데이터 추출
+    const metadata = await this.fetchMetadata(url);
+
+    // 링크 객체 생성
+    const link = {
+      id: crypto.randomUUID(),
+      url,
+      title: title || metadata.title || url,
+      description: note || '',
+      thumbnail: metadata.thumbnail,
+      favicon: metadata.favicon,
+      domain: metadata.domain,
+      isRead: false,
+      category: category || null,
+      tags: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      readAt: null,
+      sharedFrom: 'share-api',
+      sharedText: data.originalText || '',
+      metadata: {
+        author: null,
+        publishDate: null,
+        contentType: this.detectContentType(url),
+        duration: null
+      }
+    };
+
+    // IndexedDB에 저장
+    await this.storage.createLink(link);
+
+    // 공유 데이터를 처리 완료로 표시
+    if (data.shareId) {
+      await this.storage.markSharedDataProcessed(data.shareId);
+    }
+
+    return link;
+  }
+
+  // 콘텐츠 타입 감지
+  detectContentType(url) {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      return 'video';
+    }
+    if (url.includes('twitter.com') || url.includes('x.com')) {
+      return 'social';
+    }
+    if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      return 'image';
+    }
+    return 'article';
+  }
+}
+
+export default ShareHandler;
+```
+
+### 4. 공유 확인 페이지 (share-confirm.html)
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>링크 저장 - Link Keeper</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <div class="share-confirm-container">
+    <header>
+      <button id="cancel-btn" class="back-btn">취소</button>
+      <h1>링크 저장</h1>
+    </header>
+
+    <main>
+      <div class="preview-card">
+        <img id="preview-thumbnail" class="thumbnail" src="" alt="" />
+        <div class="preview-content">
+          <h2 id="preview-title">제목 로딩 중...</h2>
+          <p id="preview-url" class="url"></p>
+        </div>
+      </div>
+
+      <form id="save-form">
+        <div class="form-group">
+          <label for="note-input">메모 (선택)</label>
+          <textarea
+            id="note-input"
+            rows="3"
+            placeholder="이 링크에 대한 메모를 추가하세요..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="category-select">카테고리 (선택)</label>
+          <select id="category-select">
+            <option value="">카테고리 없음</option>
+            <!-- 동적으로 추가 -->
+          </select>
+        </div>
+
+        <button type="submit" class="btn-primary">저장</button>
+      </form>
+    </main>
+  </div>
+
+  <script type="module">
+    import ShareHandler from '/src/share-handler.js';
+    import StorageManager from '/src/storage-manager.js';
+    import UIController from '/src/ui-controller.js';
+
+    // 초기화
+    const storage = new StorageManager();
+    const ui = new UIController();
+    const shareHandler = new ShareHandler(storage, ui);
+
+    // URL에서 shareId 추출
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('id');
+
+    // 공유 데이터 로드 및 표시
+    async function init() {
+      if (!shareId) {
+        window.location.href = '/';
+        return;
+      }
+
+      const sharedData = await shareHandler.loadSharedData(shareId);
+
+      if (!sharedData) {
+        window.location.href = '/';
+        return;
+      }
+
+      // UI 업데이트
+      document.getElementById('preview-title').textContent = sharedData.title || '제목 없음';
+      document.getElementById('preview-url').textContent = sharedData.url;
+
+      // 메타데이터 가져오기
+      const metadata = await shareHandler.fetchMetadata(sharedData.url);
+      if (metadata.thumbnail) {
+        document.getElementById('preview-thumbnail').src = metadata.thumbnail;
+      }
+
+      // 카테고리 목록 로드
+      const categories = await storage.getAllCategories();
+      const select = document.getElementById('category-select');
+      categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = `${cat.icon} ${cat.name}`;
+        select.appendChild(option);
+      });
+    }
+
+    // 폼 제출
+    document.getElementById('save-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const sharedData = await shareHandler.loadSharedData(shareId);
+      const note = document.getElementById('note-input').value;
+      const category = document.getElementById('category-select').value;
+
+      try {
+        await shareHandler.saveLink({
+          url: sharedData.url,
+          title: sharedData.title,
+          note,
+          category,
+          shareId,
+          originalText: sharedData.text
+        });
+
+        // 저장 완료 → 홈으로
+        window.location.href = '/?saved=true';
+      } catch (error) {
+        alert('저장 실패: ' + error.message);
+      }
+    });
+
+    // 취소 버튼
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+      window.location.href = '/';
+    });
+
+    // 초기화 실행
+    init();
+  </script>
+</body>
+</html>
+```
 
 ---
 
-## 🔐 보안 고려사항
+## 🔌 StorageManager API
+
+```javascript
+// src/storage-manager.js
+class StorageManager {
+  constructor() {
+    this.db = null;
+    this.init();
+  }
+
+  async init() {
+    this.db = await this.openDB();
+  }
+
+  async openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('LinkKeeperDB', 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+
+        if (!db.objectStoreNames.contains('links')) {
+          const linksStore = db.createObjectStore('links', { keyPath: 'id' });
+          linksStore.createIndex('url', 'url', { unique: true });
+          linksStore.createIndex('isRead', 'isRead', { unique: false });
+          linksStore.createIndex('createdAt', 'createdAt', { unique: false });
+          linksStore.createIndex('domain', 'domain', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('sharedData')) {
+          const sharedStore = db.createObjectStore('sharedData', { keyPath: 'id' });
+          sharedStore.createIndex('processed', 'processed', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('categories')) {
+          db.createObjectStore('categories', { keyPath: 'id' });
+        }
+
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'key' });
+        }
+      };
+    });
+  }
+
+  // === Link 관련 ===
+
+  async createLink(linkData) {
+    const transaction = this.db.transaction(['links'], 'readwrite');
+    const store = transaction.objectStore('links');
+    return new Promise((resolve, reject) => {
+      const request = store.add(linkData);
+      request.onsuccess = () => resolve(linkData);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getAllLinks(filter = 'all', sortBy = 'createdAt', order = 'desc') {
+    const transaction = this.db.transaction(['links'], 'readonly');
+    const store = transaction.objectStore('links');
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        let links = request.result;
+
+        // 필터링
+        if (filter === 'unread') {
+          links = links.filter(link => !link.isRead);
+        } else if (filter === 'read') {
+          links = links.filter(link => link.isRead);
+        }
+
+        // 정렬
+        links.sort((a, b) => {
+          if (order === 'desc') {
+            return b[sortBy] - a[sortBy];
+          } else {
+            return a[sortBy] - b[sortBy];
+          }
+        });
+
+        resolve(links);
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getLink(id) {
+    const transaction = this.db.transaction(['links'], 'readonly');
+    const store = transaction.objectStore('links');
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async updateLink(id, updates) {
+    const link = await this.getLink(id);
+    if (!link) throw new Error('Link not found');
+
+    const updatedLink = {
+      ...link,
+      ...updates,
+      updatedAt: Date.now()
+    };
+
+    const transaction = this.db.transaction(['links'], 'readwrite');
+    const store = transaction.objectStore('links');
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(updatedLink);
+      request.onsuccess = () => resolve(updatedLink);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async markAsRead(id) {
+    return this.updateLink(id, {
+      isRead: true,
+      readAt: Date.now()
+    });
+  }
+
+  async markAsUnread(id) {
+    return this.updateLink(id, {
+      isRead: false,
+      readAt: null
+    });
+  }
+
+  async deleteLink(id) {
+    const transaction = this.db.transaction(['links'], 'readwrite');
+    const store = transaction.objectStore('links');
+
+    return new Promise((resolve, reject) => {
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // === SharedData 관련 ===
+
+  async getSharedData(id) {
+    const transaction = this.db.transaction(['sharedData'], 'readonly');
+    const store = transaction.objectStore('sharedData');
+
+    return new Promise((resolve, reject) => {
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async markSharedDataProcessed(id) {
+    const sharedData = await this.getSharedData(id);
+    if (!sharedData) return;
+
+    sharedData.processed = true;
+
+    const transaction = this.db.transaction(['sharedData'], 'readwrite');
+    const store = transaction.objectStore('sharedData');
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(sharedData);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // === Category 관련 ===
+
+  async getAllCategories() {
+    const transaction = this.db.transaction(['categories'], 'readonly');
+    const store = transaction.objectStore('categories');
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+}
+
+export default StorageManager;
+```
+
+---
+
+## 📱 PWA 설치 프롬프트
+
+```javascript
+// src/install-prompt.js
+class InstallPrompt {
+  constructor() {
+    this.deferredPrompt = null;
+    this.init();
+  }
+
+  init() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredPrompt = e;
+      this.showInstallButton();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA가 설치되었습니다!');
+      this.hideInstallButton();
+    });
+  }
+
+  showInstallButton() {
+    const btn = document.getElementById('install-btn');
+    if (btn) {
+      btn.style.display = 'block';
+      btn.addEventListener('click', () => this.promptInstall());
+    }
+  }
+
+  hideInstallButton() {
+    const btn = document.getElementById('install-btn');
+    if (btn) btn.style.display = 'none';
+  }
+
+  async promptInstall() {
+    if (!this.deferredPrompt) return;
+
+    this.deferredPrompt.prompt();
+    const { outcome } = await this.deferredPrompt.userChoice;
+
+    console.log(`User response: ${outcome}`);
+    this.deferredPrompt = null;
+  }
+
+  // 설치 여부 확인
+  isInstalled() {
+    // Standalone 모드인지 확인
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone ||
+           document.referrer.includes('android-app://');
+  }
+}
+
+export default InstallPrompt;
+```
+
+---
+
+## 🔒 보안 고려사항
 
 ### 1. XSS 방지
 ```javascript
-// 사용자 입력 sanitize
 function sanitizeHTML(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
+
+// 사용 예
+linkTitle.textContent = sanitizeHTML(userInput);
 ```
 
 ### 2. URL 검증
 ```javascript
 function isValidURL(string) {
   try {
-    new URL(string);
-    return true;
+    const url = new URL(string);
+    return url.protocol === 'http:' || url.protocol === 'https:';
   } catch (_) {
     return false;
   }
@@ -418,284 +922,216 @@ function isValidURL(string) {
 ```
 
 ### 3. HTTPS 강제
-- PWA는 HTTPS 필수
-- Mixed Content 방지
+- manifest.json의 `start_url`과 `scope`는 HTTPS 필수
+- Vercel/Netlify는 자동으로 HTTPS 제공
 
 ### 4. CSP (Content Security Policy)
 ```html
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' https:; script-src 'self'">
+      content="default-src 'self';
+               img-src 'self' https:;
+               style-src 'self' 'unsafe-inline';
+               script-src 'self';">
 ```
 
 ---
 
-## 📱 PWA 구현
+## 📈 성능 최적화
 
-### 1. Service Worker
+### 1. Service Worker 캐싱 전략
+
 ```javascript
-// sw.js
-const CACHE_NAME = 'link-keeper-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles/main.css',
-  '/src/app.js',
-  '/manifest.json'
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+// Network First (공유 데이터)
+if (url.pathname === '/share') {
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match('/offline.html'))
   );
-});
+}
 
-self.addEventListener('activate', (event) => {
-  // 오래된 캐시 정리
-});
-
-self.addEventListener('fetch', (event) => {
-  // 캐시 우선 전략
-});
-```
-
-### 2. Web App Manifest
-```json
-{
-  "name": "Link Keeper",
-  "short_name": "LinkKeeper",
-  "description": "모바일 링크 관리 앱",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2196F3",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+// Cache First (정적 자산)
+if (url.pathname.startsWith('/styles/') || url.pathname.startsWith('/icons/')) {
+  event.respondWith(
+    caches.match(event.request).then(response =>
+      response || fetch(event.request)
+    )
+  );
 }
 ```
 
-### 3. 설치 프롬프트
+### 2. IndexedDB 최적화
+
+- **인덱스 활용**: isRead, createdAt 인덱스로 빠른 필터링
+- **배치 작업**: transaction 재사용
+- **Cursor 사용**: 대량 데이터 처리 시
+
 ```javascript
-let deferredPrompt;
+async function getLinksPaginated(offset, limit) {
+  const transaction = this.db.transaction(['links'], 'readonly');
+  const store = transaction.objectStore('links');
+  const index = store.index('createdAt');
 
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  // 설치 버튼 표시
-});
+  return new Promise((resolve, reject) => {
+    const results = [];
+    let count = 0;
 
-// 사용자가 설치 버튼 클릭 시
-btnInstall.addEventListener('click', async () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response: ${outcome}`);
-    deferredPrompt = null;
-  }
-});
+    const request = index.openCursor(null, 'prev'); // 최신순
+
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor || count >= offset + limit) {
+        resolve(results);
+        return;
+      }
+
+      if (count >= offset) {
+        results.push(cursor.value);
+      }
+
+      count++;
+      cursor.continue();
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
 ```
 
 ---
 
 ## 🧪 테스트 전략
 
-### 1. 유닛 테스트
+### 1. Web Share Target API 테스트
+
 ```javascript
-// StorageManager 테스트
-describe('StorageManager', () => {
-  test('should create a link', async () => {
-    const link = await storageManager.createLink({
+// 수동 테스트 방법
+// 1. HTTPS 환경에서 PWA 설치
+// 2. 다른 앱에서 링크 공유 → Link Keeper 선택
+// 3. 확인 화면이 뜨는지 확인
+// 4. 저장 후 목록에 표시되는지 확인
+
+// 자동 테스트 (Playwright)
+test('should handle shared link', async ({ page, context }) => {
+  // PWA 설치
+  await page.goto('https://link-keeper.vercel.app');
+  await page.click('#install-btn');
+
+  // 공유 시뮬레이션 (POST /share)
+  const response = await page.request.post('/share', {
+    form: {
       url: 'https://example.com',
-      title: 'Example'
-    });
-    expect(link.id).toBeDefined();
-    expect(link.url).toBe('https://example.com');
+      title: 'Example Title',
+      text: 'Example text'
+    }
   });
 
-  test('should mark link as read', async () => {
-    const link = await storageManager.createLink({ url: 'https://test.com' });
-    await storageManager.markAsRead(link.id);
-    const updated = await storageManager.getLink(link.id);
-    expect(updated.isRead).toBe(true);
-  });
+  expect(response.status()).toBe(303);
+  expect(response.headers()['location']).toContain('/share-confirm');
 });
 ```
-
-### 2. E2E 테스트
-```javascript
-// Playwright 테스트
-test('should add and display a link', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-  await page.click('[data-testid="add-link-btn"]');
-  await page.fill('[data-testid="url-input"]', 'https://example.com');
-  await page.click('[data-testid="save-btn"]');
-  await expect(page.locator('text=example.com')).toBeVisible();
-});
-```
-
-### 3. 브라우저 호환성 테스트
-- Chrome (Android)
-- Safari (iOS)
-- Firefox Mobile
-- Samsung Internet
 
 ---
 
-## 📈 모니터링 및 분석
+## 📦 프로젝트 구조
 
-### 1. 성능 모니터링
-```javascript
-// Performance API
-window.addEventListener('load', () => {
-  const perfData = window.performance.timing;
-  const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-  console.log('Page load time:', pageLoadTime);
-});
-```
-
-### 2. 에러 트래킹
-```javascript
-window.addEventListener('error', (event) => {
-  // 에러 로그 전송 (예: Sentry)
-  console.error('Error:', event.error);
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', event.reason);
-});
-```
-
-### 3. 사용자 분석 (선택)
-- Google Analytics 4
-- Plausible (프라이버시 중심)
-- 자체 구축
-
----
-
-## 🔧 개발 환경 설정
-
-### 프로젝트 구조
 ```
 link-keeper/
 ├── public/
 │   ├── icons/
 │   │   ├── icon-192.png
 │   │   └── icon-512.png
-│   ├── manifest.json
-│   └── sw.js
+│   ├── manifest.json          # PWA manifest (share_target!)
+│   └── sw.js                  # Service Worker
+│
 ├── src/
-│   ├── components/
-│   │   ├── LinkCard.js
-│   │   ├── LinkList.js
-│   │   ├── AddLinkModal.js
-│   │   └── ...
 │   ├── managers/
-│   │   ├── StorageManager.js
-│   │   ├── UIController.js
-│   │   └── LinkManager.js
+│   │   └── storage-manager.js
+│   ├── handlers/
+│   │   └── share-handler.js   # 공유 처리 로직
+│   ├── components/
+│   │   ├── link-card.js
+│   │   └── link-list.js
 │   ├── utils/
 │   │   ├── validators.js
-│   │   ├── formatters.js
-│   │   └── metadata.js
-│   ├── styles/
-│   │   ├── variables.css
-│   │   ├── reset.css
-│   │   └── main.css
-│   ├── app.js
-│   └── main.js
-├── tests/
-│   ├── unit/
-│   └── e2e/
-├── docs/
-│   ├── PROJECT_PLAN.md
-│   └── TECH_SPEC.md
-├── index.html
+│   │   └── formatters.js
+│   └── app.js
+│
+├── styles/
+│   ├── variables.css
+│   ├── reset.css
+│   └── main.css
+│
+├── index.html                 # 메인 페이지
+├── share-confirm.html         # 공유 확인 페이지 (핵심!)
 ├── package.json
 ├── vite.config.js
 └── README.md
 ```
 
-### package.json
-```json
-{
-  "name": "link-keeper",
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "jest",
-    "test:e2e": "playwright test"
-  },
-  "devDependencies": {
-    "vite": "^5.0.0",
-    "jest": "^29.0.0",
-    "playwright": "^1.40.0",
-    "eslint": "^8.0.0",
-    "prettier": "^3.0.0"
-  }
-}
-```
-
 ---
 
-## 🚢 배포 전략
+## 🚀 배포
 
-### 1. Vercel 배포
+### Vercel 배포 (추천)
+
 ```bash
-# Vercel CLI 설치
+# 1. Vercel CLI 설치
 npm i -g vercel
 
-# 배포
+# 2. 배포
 vercel --prod
+
+# 3. 자동 HTTPS 적용됨
+# 4. PWA 설치 테스트
 ```
 
-### 2. GitHub Pages 배포
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy
-on:
-  push:
-    branches: [main]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npm run build
-      - uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+### vercel.json 설정
+
+```json
+{
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ---
 
 ## 📝 다음 단계
 
+### MVP 개발 순서
+
 1. ✅ 프로젝트 초기 설정
-2. ⏳ 기본 UI 레이아웃 구현
-3. ⏳ IndexedDB 연동 및 CRUD 구현
-4. ⏳ 링크 추가/목록/삭제 기능
-5. ⏳ PWA 기능 추가
-6. ⏳ 배포 및 테스트
+2. ⏳ PWA 설정 (manifest.json, Service Worker)
+3. ⏳ Web Share Target API 구현
+4. ⏳ IndexedDB 연동
+5. ⏳ 공유 확인 화면
+6. ⏳ 링크 목록 화면
+7. ⏳ 읽음/안 읽음 관리
+8. ⏳ 테스트 및 배포
 
 ---
 
 **최종 업데이트**: 2025-11-07
-**버전**: 1.0
+**버전**: 2.0 (공유 중심 설계)
 **작성자**: CodeLab Team
