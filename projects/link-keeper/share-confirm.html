@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="링크 저장 - Link Keeper">
+  <meta name="theme-color" content="#2196F3">
+
+  <title>링크 저장 - Link Keeper</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/public/manifest.json">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/styles/variables.css">
+  <link rel="stylesheet" href="/styles/reset.css">
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <div class="share-confirm-container">
+    <!-- Header -->
+    <header class="share-header">
+      <button id="cancel-btn" class="back-btn">취소</button>
+      <h1 class="share-header-title">링크 저장</h1>
+      <div style="width: 40px;"></div> <!-- Spacer for centering -->
+    </header>
+
+    <!-- Main Content -->
+    <main class="share-main">
+      <!-- Preview Card -->
+      <div class="preview-card">
+        <img id="preview-thumbnail" class="preview-thumbnail hidden" src="" alt="">
+        <h2 id="preview-title" class="preview-title">제목 로딩 중...</h2>
+        <p id="preview-url" class="preview-url"></p>
+      </div>
+
+      <!-- Form -->
+      <form id="save-form">
+        <div class="form-group">
+          <label for="note-input" class="form-label">메모 (선택)</label>
+          <textarea
+            id="note-input"
+            class="form-textarea"
+            rows="3"
+            placeholder="이 링크에 대한 메모를 추가하세요..."
+          ></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          저장
+        </button>
+      </form>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
+    import StorageManager from '/src/managers/storage-manager.js';
+    import ShareHandler from '/src/handlers/share-handler.js';
+
+    // 초기화
+    const storage = new StorageManager();
+    const shareHandler = new ShareHandler(storage);
+
+    // URL에서 shareId 추출
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('id');
+
+    // 공유 데이터 로드 및 표시
+    async function init() {
+      if (!shareId) {
+        console.error('No share ID provided');
+        window.location.href = '/';
+        return;
+      }
+
+      try {
+        // Storage Manager 초기화 대기
+        await storage.ready;
+
+        const sharedData = await shareHandler.loadSharedData(shareId);
+
+        if (!sharedData) {
+          console.error('Shared data not found or already processed');
+          window.location.href = '/';
+          return;
+        }
+
+        // UI 업데이트
+        document.getElementById('preview-title').textContent =
+          sharedData.title || sharedData.url || '제목 없음';
+        document.getElementById('preview-url').textContent = sharedData.url;
+
+        // 메타데이터 가져오기 (비동기)
+        const metadata = await shareHandler.fetchMetadata(sharedData.url);
+        if (metadata.thumbnail) {
+          const thumbnail = document.getElementById('preview-thumbnail');
+          thumbnail.src = metadata.thumbnail;
+          thumbnail.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Error loading shared data:', error);
+        alert('공유 데이터를 불러오는 중 오류가 발생했습니다.');
+        window.location.href = '/';
+      }
+    }
+
+    // 폼 제출
+    document.getElementById('save-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      try {
+        await storage.ready;
+
+        const sharedData = await shareHandler.loadSharedData(shareId);
+        if (!sharedData) {
+          throw new Error('Shared data not found');
+        }
+
+        const note = document.getElementById('note-input').value;
+
+        await shareHandler.saveLink({
+          url: sharedData.url,
+          title: sharedData.title,
+          note,
+          shareId,
+          originalText: sharedData.text
+        });
+
+        // 저장 완료 → 홈으로
+        window.location.href = '/?saved=true';
+      } catch (error) {
+        console.error('Error saving link:', error);
+        alert('저장 실패: ' + error.message);
+      }
+    });
+
+    // 취소 버튼
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+      window.location.href = '/';
+    });
+
+    // 초기화 실행
+    init();
+  </script>
+</body>
+</html>
