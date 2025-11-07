@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="모바일 링크 관리 PWA - 공유 버튼으로 간편하게 저장">
+  <meta name="theme-color" content="#2196F3">
+
+  <title>Link Keeper - 링크 관리</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/public/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/public/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/public/icons/icon-192.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/styles/variables.css">
+  <link rel="stylesheet" href="/styles/reset.css">
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <h1 class="app-title">🔗 Link Keeper</h1>
+      <div class="header-actions">
+        <button id="install-btn" class="btn btn-secondary hidden">앱 설치</button>
+        <button id="search-btn" class="icon-btn" title="검색">
+          🔍
+        </button>
+      </div>
+    </header>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all">
+        전체 <span id="count-all">(0)</span>
+      </button>
+      <button class="filter-tab" data-filter="unread">
+        안읽음 <span id="count-unread">(0)</span>
+      </button>
+      <button class="filter-tab" data-filter="read">
+        읽음 <span id="count-read">(0)</span>
+      </button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="app-main" id="main-content">
+      <!-- Links will be rendered here -->
+
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-state-icon">📭</div>
+        <h2 class="empty-state-title">아직 저장된 링크가 없습니다</h2>
+        <p class="empty-state-description">
+          다른 앱에서 공유 버튼을 눌러<br>
+          Link Keeper로 링크를 추가해보세요!
+        </p>
+        <p class="empty-state-description text-secondary">
+          또는 아래 + 버튼을 눌러 직접 추가할 수 있습니다.
+        </p>
+      </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button class="fab" id="add-link-btn" title="링크 추가">
+      +
+    </button>
+  </div>
+
+  <!-- Add Link Modal -->
+  <div id="add-link-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">링크 추가</h2>
+        <button class="modal-close icon-btn" id="close-modal-btn">
+          ✕
+        </button>
+      </div>
+
+      <form id="add-link-form">
+        <div class="form-group">
+          <label for="url-input" class="form-label">URL *</label>
+          <input
+            type="url"
+            id="url-input"
+            class="form-input"
+            placeholder="https://example.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="note-input" class="form-label">메모 (선택)</label>
+          <textarea
+            id="note-input"
+            class="form-textarea"
+            rows="3"
+            placeholder="이 링크에 대한 메모를 추가하세요..."
+          ></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          저장
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>
