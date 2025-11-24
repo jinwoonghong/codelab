@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom scrollbar for mobile */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+/* Smooth animations */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Chat bubble styles */
+.chat-bubble {
+  @apply rounded-2xl px-4 py-3 max-w-[85%];
+}
+
+.chat-bubble-ai {
+  @apply bg-gray-100 text-gray-800 rounded-bl-md;
+}
+
+.chat-bubble-user {
+  @apply bg-primary-500 text-white rounded-br-md ml-auto;
+}
+
+/* Slot fill input styling */
+.slot-input {
+  @apply border-b-2 border-dashed border-primary-400 bg-primary-50 px-2 py-1
+         min-w-[100px] text-center focus:outline-none focus:border-primary-600
+         focus:bg-primary-100 transition-all;
+}
+
+/* Hint card animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hint-card {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Pulse animation for recording */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+}
+
+.recording-pulse {
+  animation: pulse-ring 1.5s infinite;
+}
