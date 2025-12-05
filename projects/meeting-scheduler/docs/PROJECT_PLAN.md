@@ -16,22 +16,23 @@
 - **핵심 문제**: "5명 이상 일정 맞추기가 너무 귀찮다"
 
 ### 해결 방안
-**"링크 공유 → 투표 → 결과 공유 → 집계"**
+**"링크 공유 → 투표 → 자동 집계"**
 
 1. 회의 주최자가 투표 생성 (30초 완료)
 2. 카카오톡에 투표 링크 공유
 3. 참여자들이 링크 클릭 → 가능한 시간 투표 (10초 완료)
-4. 참여자가 본인 투표 결과 링크를 채팅방에 공유
-5. 주최자가 집계 페이지에서 결과 URL들 취합 → 자동 집계
+4. 같은 링크에서 실시간 결과 확인
+5. 가장 많이 겹치는 시간으로 확정
 
-→ **앱 설치 없이, 서버 없이, 링크만으로 일정 조율 완료**
+→ **앱 설치 없이, 서버 관리 없이, 링크 하나로 일정 조율 완료**
 
 ### 목표
 - **초간단 생성**: 30초 안에 투표 링크 생성
 - **즉시 참여**: 앱 설치/회원가입 없이 링크만으로 투표
-- **완전 서버리스**: DB/서버 없이 URL만으로 동작
+- **실시간 집계**: 투표하면 바로 결과에 반영
+- **서버 관리 불필요**: Vercel 서버리스로 자동 운영
 - **모바일 최적화**: 카카오톡 인앱 브라우저에서 완벽 동작
-- **무료 운영**: 정적 호스팅만으로 서비스 가능
+- **무료 운영**: Vercel 무료 티어로 충분
 
 ---
 
@@ -57,19 +58,14 @@ Meeting Scheduler에서 투표 생성
 - 장소: 강남역, 역삼역
          ↓
 생성된 링크를 카카오톡 단톡방에 공유
-"회식 일정 투표 부탁드려요~ [투표 링크]"
+"회식 일정 투표 부탁드려요~ [링크]"
          ↓
 팀원들이 링크 클릭 → 이름 입력 → 가능한 시간 체크 → 투표
          ↓
-각자 투표 결과 링크를 카톡에 공유
-"투표했어요~ [내 결과 링크]"
-         ↓
-팀장이 집계 버튼 클릭 → 결과 URL들 붙여넣기
-         ↓
-자동 집계 결과 확인
+같은 링크에서 실시간 결과 확인!
 "12/10(화) 저녁 7시 - 4명 가능 ✓"
          ↓
-팀장이 결과 공유
+팀장이 최다 참여 시간으로 확정
 "12/10 저녁 7시 역삼역으로 확정합니다!"
 ```
 
@@ -508,102 +504,127 @@ Meeting Scheduler에서 투표 생성
 
 ## 기술 스택
 
+### 아키텍처
+```
+┌─────────────────────────────────────────┐
+│  Vercel (무료 티어)                       │
+│  ├── Static Hosting (프론트엔드)          │
+│  ├── Serverless Functions (API)         │
+│  └── Vercel KV (Redis 스토리지)          │
+└─────────────────────────────────────────┘
+```
+
 ### Frontend
 - **HTML5 / CSS3 / JavaScript (ES6+)**
 - **Vite** - 빌드 도구
 - **Vanilla JS** - 의존성 최소화
 
-### 데이터 저장 (완전 서버리스)
-- **URL 해시 인코딩** - 모든 데이터를 URL에 저장
-  - 투표 정보: Base64 인코딩된 JSON
-  - 서버/DB 완전 불필요
-  - 예: `meet.app/#p=eyJ0IjoiνjhMIg...`
-- **LocalStorage** - 내 투표 기록 임시 저장
+### Backend (Vercel Serverless)
+- **Vercel Serverless Functions** - API 엔드포인트
+  - `POST /api/polls` - 투표 생성
+  - `GET /api/polls/:id` - 투표 조회
+  - `POST /api/polls/:id/vote` - 투표 참여
+  - `GET /api/polls/:id/results` - 결과 조회
+- **Vercel KV** - Redis 기반 데이터 저장
+  - 서버 관리 불필요
+  - 무료 티어: 3,000 요청/일, 256MB
 
 ### 작동 방식
 ```
-1. 주최자: 투표 생성 → 투표 정보가 URL에 인코딩됨
-   https://meet.app/#p=eyJ0IjoiνjhMIg...
+1. 주최자: 투표 생성 → Vercel KV에 저장 → 고유 링크 생성
+   https://meet.app/p/abc123
 
-2. 참여자: 링크 클릭 → 투표 → 결과 URL 생성
-   https://meet.app/#p=...&v=eyJuIjoi6rmA7LKg7IiYIi...
+2. 참여자: 링크 클릭 → 투표 → Vercel KV에 저장
 
-3. 참여자: 결과 URL을 채팅방에 공유
-   "투표했어요~ [링크]"
-
-4. 주최자: 집계 페이지에서 결과 URL들 취합
-   → 자동으로 결과 표 생성
+3. 누구나: 같은 링크에서 실시간 결과 확인
+   (새로고침하면 최신 결과 표시)
 ```
 
 ### 배포
-- **Vercel** 또는 **Netlify** (무료)
-- **GitHub Pages** (무료)
-- 정적 파일만 배포하면 끝
+- **Vercel** (무료)
+  - GitHub 연동으로 자동 배포
+  - `git push`하면 끝
 
 ### 외부 API
 - **Kakao SDK** - 카카오톡 공유 (Phase 2)
 - **Web Share API** - 시스템 공유 기능
 
+### 무료 티어 한도 (충분함)
+| 서비스 | 무료 한도 | 예상 사용량 |
+|--------|----------|------------|
+| Vercel Hosting | 100GB 대역폭/월 | 매우 여유 |
+| Serverless Functions | 100GB-hours/월 | 매우 여유 |
+| Vercel KV | 3,000 요청/일 | 투표 100개/일 가능 |
+
 ---
 
-## 데이터 모델 (URL 인코딩)
+## 데이터 모델 (Vercel KV)
 
 ### URL 구조
 ```
-https://meet.app/#p={pollData}&v={voteData}
+https://meet.app/p/{pollId}
 
-p = Poll 데이터 (Base64 인코딩된 JSON)
-v = Vote 데이터 (Base64 인코딩된 JSON, 선택)
+예: https://meet.app/p/abc123
 ```
 
-### Poll (투표) - URL 파라미터 `p`
+### Poll (투표) - KV Key: `poll:{id}`
 ```javascript
-// 원본 JSON
 {
-  t: "팀 회식 일정",           // title (축약)
-  c: "홍길동",                // creator
-  o: [                       // options (날짜/시간)
+  id: "abc123",
+  title: "팀 회식 일정",
+  creator: "홍길동",
+  createdAt: "2025-12-05T10:00:00Z",
+  status: "open",  // open | closed
+
+  // 날짜/시간 옵션
+  timeOptions: [
     "12/9(월) 19:00",
     "12/10(화) 19:00",
     "12/11(수) 19:00"
   ],
-  l: ["강남역", "역삼역"]      // locations (선택)
-}
 
-// Base64 인코딩 → URL에 포함
-#p=eyJ0Ijoi7YyA7ZqM7Iud...
+  // 장소 옵션 (선택)
+  locationOptions: ["강남역", "역삼역"]
+}
 ```
 
-### Vote (투표 결과) - URL 파라미터 `v`
+### Votes (투표 목록) - KV Key: `votes:{pollId}`
 ```javascript
-// 원본 JSON
+[
+  {
+    name: "김철수",
+    selectedTimes: [1, 2],      // 옵션 인덱스
+    selectedLocations: [0],
+    votedAt: "2025-12-05T11:00:00Z"
+  },
+  {
+    name: "이영희",
+    selectedTimes: [0, 1],
+    selectedLocations: [0, 1],
+    votedAt: "2025-12-05T11:05:00Z"
+  }
+]
+```
+
+### API 응답 예시
+```javascript
+// GET /api/polls/abc123/results
 {
-  n: "김철수",                // name
-  s: [1, 2],                 // selected (옵션 인덱스)
-  l: [0]                     // location (장소 인덱스)
+  poll: { ... },
+  votes: [ ... ],
+  summary: {
+    totalVotes: 5,
+    timeResults: [
+      { option: "12/9(월) 19:00", count: 2, voters: ["홍길동", "김철수"] },
+      { option: "12/10(화) 19:00", count: 4, voters: ["홍길동", "김철수", "이영희", "박지민"] },
+      { option: "12/11(수) 19:00", count: 3, voters: ["김철수", "이영희", "박지민"] }
+    ],
+    locationResults: [
+      { option: "강남역", count: 4, voters: [...] },
+      { option: "역삼역", count: 2, voters: [...] }
+    ]
+  }
 }
-
-// Base64 인코딩 → URL에 추가
-#p=...&v=eyJuIjoi6rmA7LKg7IiYIi...
-```
-
-### 집계 방식
-```
-1. 주최자가 집계 페이지 접속
-2. 참여자들이 공유한 결과 URL들을 입력창에 붙여넣기
-3. 각 URL에서 vote 데이터 추출
-4. 자동으로 결과 매트릭스 생성
-
-예시 입력:
-- https://meet.app/#p=...&v=eyJuIjoi6rmA7LKg7IiYIi...
-- https://meet.app/#p=...&v=eyJuIjoi7J207JiB7ZuiIi...
-- https://meet.app/#p=...&v=eyJuIjoi67CV7KeA66+8Ii...
-
-→ 결과:
-         12/9(월)  12/10(화)  12/11(수)
-김철수      -         ✓          ✓
-이영희      ✓         ✓          -
-박지민      -         ✓          ✓
 ```
 
 ---
