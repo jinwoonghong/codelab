@@ -1,8 +1,13 @@
 // Content Script
 // 텍스트 선택 감지 및 툴팁 표시
+// PDF 뷰어 (Google Scholar PDF Reader 등) 호환
 
 (function() {
   'use strict';
+
+  // 이미 로드되었는지 확인 (iframe 중복 방지)
+  if (window.__pttLoaded) return;
+  window.__pttLoaded = true;
 
   let tooltip = null;
   let isEnabled = true;
@@ -16,9 +21,17 @@
   init();
 
   function init() {
-    createTooltip();
+    // DOM이 준비될 때까지 대기
+    if (document.body) {
+      createTooltip();
+    } else {
+      document.addEventListener('DOMContentLoaded', createTooltip);
+    }
     loadSettings();
     setupEventListeners();
+
+    // PDF 환경 감지 로그
+    console.log('[PDF Translation Tooltip] Initialized on:', window.location.href);
   }
 
   // 설정 로드
@@ -27,16 +40,23 @@
       const response = await chrome.runtime.sendMessage({ action: 'getSettings' });
       if (response) {
         settings = response;
-        isEnabled = settings.enabled;
+        isEnabled = settings.enabled !== false; // 기본값 true
         updateTooltipTheme();
       }
     } catch (e) {
-      console.log('Settings load error:', e);
+      // Extension context가 없는 경우 (예: 다른 확장 프로그램 페이지)
+      console.log('[PDF Translation Tooltip] Settings load error:', e.message);
     }
   }
 
   // 툴팁 엘리먼트 생성
   function createTooltip() {
+    // 이미 존재하면 스킵
+    if (document.getElementById('pdf-translation-tooltip')) {
+      tooltip = document.getElementById('pdf-translation-tooltip');
+      return;
+    }
+
     tooltip = document.createElement('div');
     tooltip.id = 'pdf-translation-tooltip';
     tooltip.className = 'ptt-tooltip';
@@ -68,7 +88,10 @@
         </button>
       </div>
     `;
-    document.body.appendChild(tooltip);
+
+    // body가 없으면 documentElement에 추가
+    const container = document.body || document.documentElement;
+    container.appendChild(tooltip);
 
     // 툴팁 이벤트 리스너
     tooltip.querySelector('.ptt-close').addEventListener('click', hideTooltip);
@@ -76,26 +99,45 @@
     tooltip.querySelector('.ptt-copy').addEventListener('click', copyText);
     tooltip.querySelector('.ptt-save').addEventListener('click', saveWord);
 
+    // 툴팁 내부 클릭 시 이벤트 전파 방지
+    tooltip.addEventListener('mousedown', (e) => e.stopPropagation());
+    tooltip.addEventListener('mouseup', (e) => e.stopPropagation());
+  }
+
+  // 이벤트 리스너 설정
+  function setupEventListeners() {
+    // mouseup 이벤트 (캡처 단계에서)
+    document.addEventListener('mouseup', handleMouseUp, true);
+
     // 툴팁 외부 클릭 시 닫기
     document.addEventListener('mousedown', (e) => {
       if (tooltip && !tooltip.contains(e.target) && tooltip.classList.contains('ptt-visible')) {
         hideTooltip();
       }
-    });
-  }
+    }, true);
 
-  // 이벤트 리스너 설정
-  function setupEventListeners() {
-    document.addEventListener('mouseup', handleMouseUp);
-
-    // 설정 변경 감지
-    chrome.storage.onChanged.addListener((changes) => {
-      if (changes.settings) {
-        settings = changes.settings.newValue;
-        isEnabled = settings.enabled;
-        updateTooltipTheme();
+    // 키보드 단축키 (ESC로 닫기)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && tooltip && tooltip.classList.contains('ptt-visible')) {
+        hideTooltip();
       }
     });
+
+    // 설정 변경 감지
+    try {
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes.settings) {
+          settings = changes.settings.newValue;
+          isEnabled = settings.enabled !== false;
+          updateTooltipTheme();
+        }
+      });
+    } catch (e) {
+      // chrome.storage 접근 불가 시 무시
+    }
+
+    // 스크롤 시 툴팁 숨기기
+    document.addEventListener('scroll', hideTooltip, true);
   }
 
   // 마우스업 이벤트 핸들러
@@ -105,51 +147,81 @@
 
     // 약간의 딜레이 후 선택 텍스트 확인
     setTimeout(() => {
-      const selection = window.getSelection();
-      const selectedText = selection.toString().trim();
+      const selectedText = getSelectedText();
 
-      if (selectedText && selectedText.length > 0 && selectedText.length < 500) {
-        showTooltip(e.clientX, e.clientY, selectedText);
+      if (selectedText && selectedText.length > 0 && selectedText.length < 1000) {
+        // 영어 또는 선택된 소스 언어인지 간단히 체크
+        if (shouldTranslate(selectedText)) {
+          showTooltip(e.clientX, e.clientY, selectedText);
+        }
       }
-    }, 10);
+    }, 50);
+  }
+
+  // 선택된 텍스트 가져오기 (다양한 환경 지원)
+  function getSelectedText() {
+    let text = '';
+
+    // 1. 표준 Selection API
+    const selection = window.getSelection();
+    if (selection) {
+      text = selection.toString().trim();
+    }
+
+    // 2. 텍스트가 없으면 activeElement 확인 (input, textarea)
+    if (!text && document.activeElement) {
+      const el = document.activeElement;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        text = el.value.substring(el.selectionStart, el.selectionEnd).trim();
+      }
+    }
+
+    return text;
+  }
+
+  // 번역이 필요한 텍스트인지 확인
+  function shouldTranslate(text) {
+    // 너무 짧으면 스킵
+    if (text.length < 1) return false;
+
+    // 숫자만 있으면 스킵
+    if (/^\d+$/.test(text)) return false;
+
+    // URL이면 스킵
+    if (/^https?:\/\//.test(text)) return false;
+
+    return true;
   }
 
   // 툴팁 표시
   async function showTooltip(x, y, text) {
-    if (!tooltip) return;
+    if (!tooltip) {
+      createTooltip();
+      if (!tooltip) return;
+    }
 
     // 상태 초기화
-    tooltip.querySelector('.ptt-original').textContent = text;
-    tooltip.querySelector('.ptt-translated').textContent = '';
-    tooltip.querySelector('.ptt-error').textContent = '';
-    tooltip.querySelector('.ptt-loading').style.display = 'block';
-    tooltip.querySelector('.ptt-translated').style.display = 'none';
-    tooltip.querySelector('.ptt-error').style.display = 'none';
+    const originalEl = tooltip.querySelector('.ptt-original');
+    const translatedEl = tooltip.querySelector('.ptt-translated');
+    const loadingEl = tooltip.querySelector('.ptt-loading');
+    const errorEl = tooltip.querySelector('.ptt-error');
+
+    // 긴 텍스트는 잘라서 표시
+    const displayText = text.length > 100 ? text.substring(0, 100) + '...' : text;
+    originalEl.textContent = displayText;
+    translatedEl.textContent = '';
+    errorEl.textContent = '';
+    loadingEl.style.display = 'block';
+    translatedEl.style.display = 'none';
+    errorEl.style.display = 'none';
 
     // 위치 계산
-    const tooltipWidth = 300;
-    const tooltipHeight = 150;
-    const padding = 10;
-
-    let left = x + padding;
-    let top = y + padding;
-
-    // 화면 경계 체크
-    if (left + tooltipWidth > window.innerWidth) {
-      left = x - tooltipWidth - padding;
-    }
-    if (top + tooltipHeight > window.innerHeight) {
-      top = y - tooltipHeight - padding;
-    }
-    if (left < 0) left = padding;
-    if (top < 0) top = padding;
-
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
+    positionTooltip(x, y);
     tooltip.classList.add('ptt-visible');
 
     // 현재 번역 텍스트 저장
     tooltip.dataset.currentText = text;
+    tooltip.dataset.translated = '';
 
     // 번역 요청
     try {
@@ -163,19 +235,62 @@
       // 텍스트가 변경되었으면 무시
       if (tooltip.dataset.currentText !== text) return;
 
-      if (response.success) {
-        tooltip.querySelector('.ptt-loading').style.display = 'none';
-        tooltip.querySelector('.ptt-translated').style.display = 'block';
-        tooltip.querySelector('.ptt-translated').textContent = response.data.translated;
+      if (response && response.success) {
+        loadingEl.style.display = 'none';
+        translatedEl.style.display = 'block';
+        translatedEl.textContent = response.data.translated;
         tooltip.dataset.translated = response.data.translated;
       } else {
-        throw new Error(response.error);
+        throw new Error(response?.error || 'Unknown error');
       }
     } catch (error) {
-      tooltip.querySelector('.ptt-loading').style.display = 'none';
-      tooltip.querySelector('.ptt-error').style.display = 'block';
-      tooltip.querySelector('.ptt-error').textContent = '번역 실패: ' + error.message;
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'block';
+
+      // 에러 메시지 처리
+      let errorMsg = '번역 실패';
+      if (error.message.includes('Extension context invalidated')) {
+        errorMsg = '확장 프로그램을 새로고침 해주세요';
+      } else if (error.message.includes('Could not establish connection')) {
+        errorMsg = '연결 오류 - 페이지를 새로고침 해주세요';
+      } else {
+        errorMsg = '번역 실패: ' + error.message;
+      }
+      errorEl.textContent = errorMsg;
     }
+  }
+
+  // 툴팁 위치 계산
+  function positionTooltip(x, y) {
+    const padding = 10;
+
+    // 툴팁 크기 측정
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.display = 'block';
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const tooltipWidth = tooltipRect.width || 300;
+    const tooltipHeight = tooltipRect.height || 150;
+    tooltip.style.visibility = '';
+
+    // 뷰포트 크기
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let left = x + padding;
+    let top = y + padding;
+
+    // 화면 경계 체크
+    if (left + tooltipWidth > viewportWidth - padding) {
+      left = x - tooltipWidth - padding;
+    }
+    if (top + tooltipHeight > viewportHeight - padding) {
+      top = y - tooltipHeight - padding;
+    }
+    if (left < padding) left = padding;
+    if (top < padding) top = padding;
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
   }
 
   // 툴팁 숨기기
@@ -196,8 +311,12 @@
   function speakText() {
     const text = tooltip.dataset.currentText;
     if (text && 'speechSynthesis' in window) {
+      // 이전 발화 취소
+      speechSynthesis.cancel();
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = settings.sourceLang === 'en' ? 'en-US' : settings.sourceLang;
+      utterance.rate = 0.9;
       speechSynthesis.speak(utterance);
     }
   }
@@ -206,13 +325,26 @@
   async function copyText() {
     const original = tooltip.dataset.currentText;
     const translated = tooltip.dataset.translated;
-    const textToCopy = `${original}\n${translated}`;
+    const textToCopy = translated ? `${original}\n${translated}` : original;
 
     try {
       await navigator.clipboard.writeText(textToCopy);
       showButtonFeedback('.ptt-copy', '복사됨!');
     } catch (e) {
-      console.error('Copy failed:', e);
+      // Fallback: execCommand
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showButtonFeedback('.ptt-copy', '복사됨!');
+      } catch (e2) {
+        console.error('Copy failed:', e2);
+      }
     }
   }
 
@@ -236,12 +368,16 @@
       } catch (e) {
         console.error('Save failed:', e);
       }
+    } else {
+      showButtonFeedback('.ptt-save', '번역 완료 후 저장 가능');
     }
   }
 
   // 버튼 피드백 표시
   function showButtonFeedback(selector, message) {
     const btn = tooltip.querySelector(selector);
+    if (!btn) return;
+
     const originalTitle = btn.title;
     btn.title = message;
     btn.classList.add('ptt-success');

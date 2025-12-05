@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "PDF Translation Tooltip",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "PDF에서 텍스트를 드래그하면 즉시 번역 툴팁이 표시됩니다",
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab"
   ],
   "host_permissions": [
-    "https://api.mymemory.translated.net/*"
+    "https://api.mymemory.translated.net/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
@@ -17,7 +19,9 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["content.css"],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "action": {
@@ -32,5 +36,11 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["content.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
