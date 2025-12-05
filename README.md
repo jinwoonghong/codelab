@@ -10,7 +10,7 @@
 |---|-----------|------|----------|------|
 | 1 | tower-stacker | 타워스테커 모바일 웹 게임 | HTML5, JavaScript | 🚧 기획 중 |
 | 2 | link-keeper | 모바일 링크 관리 PWA | HTML5, JavaScript, IndexedDB | 📝 기획 완료 |
-| 3 | pdf-translation-tooltip | PDF 드래그 번역 툴팁 | HTML5, JavaScript, PDF.js | 📝 기획 완료 |
+| 3 | pdf-translation-tooltip | PDF 드래그 번역 툴팁 | Chrome Extension, JavaScript | 📝 기획 완료 |
 
 ## 폴더 구조
 
