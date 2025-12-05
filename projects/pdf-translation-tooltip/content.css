@@ -1,0 +1,168 @@
+/* PDF Translation Tooltip - Content Styles */
+
+.ptt-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 200px;
+  max-width: 350px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(5px);
+  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+}
+
+.ptt-tooltip.ptt-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* 다크 테마 */
+.ptt-tooltip.ptt-dark {
+  background: #2d2d2d;
+  color: #e0e0e0;
+}
+
+/* 헤더 */
+.ptt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.ptt-dark .ptt-header {
+  border-bottom-color: #444;
+}
+
+.ptt-original {
+  flex: 1;
+  font-weight: 500;
+  color: #333;
+  word-break: break-word;
+  margin-right: 8px;
+}
+
+.ptt-dark .ptt-original {
+  color: #fff;
+}
+
+.ptt-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ptt-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.ptt-dark .ptt-close:hover {
+  background: #444;
+  color: #fff;
+}
+
+/* 본문 */
+.ptt-body {
+  padding: 12px;
+}
+
+.ptt-translated {
+  color: #1a73e8;
+  font-size: 15px;
+}
+
+.ptt-dark .ptt-translated {
+  color: #8ab4f8;
+}
+
+.ptt-loading {
+  color: #666;
+  font-style: italic;
+}
+
+.ptt-dark .ptt-loading {
+  color: #999;
+}
+
+.ptt-error {
+  color: #d93025;
+  font-size: 13px;
+}
+
+.ptt-dark .ptt-error {
+  color: #f28b82;
+}
+
+/* 푸터 */
+.ptt-footer {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid #eee;
+}
+
+.ptt-dark .ptt-footer {
+  border-top-color: #444;
+}
+
+.ptt-btn {
+  background: #f5f5f5;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ptt-btn:hover {
+  background: #e8e8e8;
+  color: #333;
+}
+
+.ptt-dark .ptt-btn {
+  background: #444;
+  color: #bbb;
+}
+
+.ptt-dark .ptt-btn:hover {
+  background: #555;
+  color: #fff;
+}
+
+.ptt-btn.ptt-success {
+  background: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.ptt-dark .ptt-btn.ptt-success {
+  background: #1e3a2f;
+  color: #81c995;
+}
+
+.ptt-btn svg {
+  width: 16px;
+  height: 16px;
+}
