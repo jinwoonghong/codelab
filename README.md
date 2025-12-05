@@ -10,6 +10,7 @@
 |---|-----------|------|----------|------|
 | 1 | tower-stacker | 타워스테커 모바일 웹 게임 | HTML5, JavaScript | 🚧 기획 중 |
 | 2 | link-keeper | 모바일 링크 관리 PWA | HTML5, JavaScript, IndexedDB | 📝 기획 완료 |
+| 3 | meeting-scheduler | 단체채팅방 회의 일정 투표 서비스 | HTML5, JavaScript | 📝 기획 완료 |
 
 ## 폴더 구조
 
@@ -35,4 +36,4 @@ codelab/
 
 ---
 
-*Last updated: 2025-11-07*
+*Last updated: 2025-12-05*
