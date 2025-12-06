@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3182F6">
+  <title>투표 참여 - Meeting Scheduler</title>
+
+  <!-- OG Tags (동적으로 업데이트됨) -->
+  <meta property="og:title" content="투표해주세요!">
+  <meta property="og:description" content="Meeting Scheduler로 일정을 정해보세요">
+  <meta property="og:type" content="website">
+
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 로딩 -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>투표를 불러오는 중...</p>
+    </div>
+
+    <!-- 에러 -->
+    <div id="error" class="error-page hidden">
+      <div class="error-icon">😢</div>
+      <h2>투표를 찾을 수 없습니다</h2>
+      <p>링크가 잘못되었거나 삭제된 투표입니다.</p>
+      <a href="/" class="btn-primary">새 투표 만들기</a>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div id="content" class="hidden">
+      <header class="poll-header">
+        <h1 id="pollTitle" class="poll-title"></h1>
+        <p class="poll-creator"><span id="creatorName"></span>님이 만든 투표</p>
+        <div id="pollStatus" class="poll-status"></div>
+      </header>
+
+      <!-- 투표 폼 -->
+      <form id="voteForm" class="vote-form">
+        <div class="form-group">
+          <label for="voterName">내 이름</label>
+          <input
+            type="text"
+            id="voterName"
+            placeholder="이름을 입력하세요"
+            required
+            maxlength="20"
+          >
+        </div>
+
+        <!-- 시간 옵션 -->
+        <div class="form-group">
+          <label>가능한 시간을 선택하세요</label>
+          <div id="timeOptionsVote" class="vote-options">
+            <!-- 동적으로 추가됨 -->
+          </div>
+        </div>
+
+        <!-- 장소 옵션 -->
+        <div id="locationSection" class="form-group hidden">
+          <label>가능한 장소를 선택하세요</label>
+          <div id="locationOptionsVote" class="vote-options">
+            <!-- 동적으로 추가됨 -->
+          </div>
+        </div>
+
+        <button type="submit" id="voteBtn" class="btn-primary">
+          투표하기
+        </button>
+      </form>
+
+      <!-- 결과 섹션 -->
+      <section class="results-section">
+        <h2>
+          투표 현황
+          <span id="totalVotes" class="vote-count">0명 참여</span>
+        </h2>
+
+        <!-- 시간 결과 -->
+        <div class="results-group">
+          <h3>날짜/시간</h3>
+          <div id="timeResults" class="results-list">
+            <!-- 동적으로 추가됨 -->
+          </div>
+        </div>
+
+        <!-- 장소 결과 -->
+        <div id="locationResultsSection" class="results-group hidden">
+          <h3>장소</h3>
+          <div id="locationResults" class="results-list">
+            <!-- 동적으로 추가됨 -->
+          </div>
+        </div>
+
+        <!-- 참여자 매트릭스 -->
+        <div class="matrix-section">
+          <h3>참여자 현황</h3>
+          <div id="votersMatrix" class="voters-matrix">
+            <!-- 동적으로 추가됨 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 공유 버튼 -->
+      <div class="share-section">
+        <button type="button" id="shareResultBtn" class="btn-secondary">
+          링크 공유하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/poll.js"></script>
+</body>
+</html>

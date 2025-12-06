@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3182F6">
+  <title>Meeting Scheduler - 회의 일정 투표</title>
+  <meta name="description" content="카카오톡에서 링크 하나로 회의 일정을 정하세요">
+
+  <!-- OG Tags -->
+  <meta property="og:title" content="Meeting Scheduler - 회의 일정 투표">
+  <meta property="og:description" content="링크 하나로 회의 일정을 쉽게 정하세요">
+  <meta property="og:type" content="website">
+
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Meeting Scheduler</h1>
+      <p class="subtitle">링크 하나로 일정 조율 끝!</p>
+    </header>
+
+    <main class="main">
+      <form id="createForm" class="form">
+        <!-- 투표 제목 -->
+        <div class="form-group">
+          <label for="title">투표 제목</label>
+          <input
+            type="text"
+            id="title"
+            placeholder="예: 팀 회식 일정"
+            required
+            maxlength="50"
+          >
+        </div>
+
+        <!-- 내 이름 -->
+        <div class="form-group">
+          <label for="creator">내 이름</label>
+          <input
+            type="text"
+            id="creator"
+            placeholder="예: 홍길동"
+            required
+            maxlength="20"
+          >
+        </div>
+
+        <!-- 날짜/시간 옵션 -->
+        <div class="form-group">
+          <label>날짜/시간 옵션 <span class="hint">(최소 2개)</span></label>
+          <div id="timeOptions" class="options-list">
+            <!-- 동적으로 추가됨 -->
+          </div>
+          <button type="button" id="addTimeBtn" class="btn-add">
+            + 날짜/시간 추가
+          </button>
+        </div>
+
+        <!-- 장소 옵션 (선택) -->
+        <div class="form-group">
+          <label>장소 옵션 <span class="hint">(선택)</span></label>
+          <div id="locationOptions" class="options-list">
+            <!-- 동적으로 추가됨 -->
+          </div>
+          <button type="button" id="addLocationBtn" class="btn-add">
+            + 장소 추가
+          </button>
+        </div>
+
+        <!-- 제출 버튼 -->
+        <button type="submit" id="submitBtn" class="btn-primary">
+          투표 만들기
+        </button>
+      </form>
+    </main>
+
+    <!-- 성공 모달 -->
+    <div id="successModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="success-icon">✅</div>
+        <h2>투표가 생성되었습니다!</h2>
+        <p class="poll-title" id="modalTitle"></p>
+
+        <div class="link-box">
+          <input type="text" id="pollLink" readonly>
+          <button type="button" id="copyBtn" class="btn-copy">복사</button>
+        </div>
+        <p id="copyFeedback" class="copy-feedback hidden">링크가 복사되었습니다!</p>
+
+        <div class="modal-actions">
+          <button type="button" id="shareBtn" class="btn-primary">
+            공유하기
+          </button>
+          <a id="viewPollBtn" href="#" class="btn-secondary">
+            투표 보기
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/create.js"></script>
+</body>
+</html>
