@@ -16,22 +16,23 @@
 - **핵심 문제**: "5명 이상 일정 맞추기가 너무 귀찮다"
 
 ### 해결 방안
-**"링크 공유 → 투표 → 확정"**
+**"링크 공유 → 투표 → 자동 집계"**
 
 1. 회의 주최자가 투표 생성 (30초 완료)
-2. 카카오톡에 링크 공유
+2. 카카오톡에 투표 링크 공유
 3. 참여자들이 링크 클릭 → 가능한 시간 투표 (10초 완료)
-4. 실시간으로 결과 확인
+4. 같은 링크에서 실시간 결과 확인
 5. 가장 많이 겹치는 시간으로 확정
 
-→ **앱 설치 없이, 링크만으로 일정 조율 완료**
+→ **앱 설치 없이, 서버 관리 없이, 링크 하나로 일정 조율 완료**
 
 ### 목표
 - **초간단 생성**: 30초 안에 투표 링크 생성
 - **즉시 참여**: 앱 설치/회원가입 없이 링크만으로 투표
-- **실시간 확인**: 투표 현황 실시간 업데이트
+- **실시간 집계**: 투표하면 바로 결과에 반영
+- **서버 관리 불필요**: Vercel 서버리스로 자동 운영
 - **모바일 최적화**: 카카오톡 인앱 브라우저에서 완벽 동작
-- **예쁜 공유**: OG 태그로 카카오톡 미리보기 카드 지원
+- **무료 운영**: Vercel 무료 티어로 충분
 
 ---
 
@@ -53,16 +54,16 @@
 Meeting Scheduler에서 투표 생성
 - 제목: "팀 회식 일정"
 - 날짜: 12/9(월), 12/10(화), 12/11(수)
-- 시간: 저녁 6시, 저녁 7시
-- 장소: 강남역, 역삼역 (선택)
+- 시간: 저녁 7시
+- 장소: 강남역, 역삼역
          ↓
 생성된 링크를 카카오톡 단톡방에 공유
 "회식 일정 투표 부탁드려요~ [링크]"
          ↓
-팀원들이 링크 클릭 → 이름 입력 → 가능한 시간 체크
+팀원들이 링크 클릭 → 이름 입력 → 가능한 시간 체크 → 투표
          ↓
-실시간으로 표 업데이트
-"12/10(화) 저녁 7시 - 5명 가능 ✓"
+같은 링크에서 실시간 결과 확인!
+"12/10(화) 저녁 7시 - 4명 가능 ✓"
          ↓
 팀장이 최다 참여 시간으로 확정
 "12/10 저녁 7시 역삼역으로 확정합니다!"
@@ -503,76 +504,126 @@ Meeting Scheduler에서 투표 생성
 
 ## 기술 스택
 
+### 아키텍처
+```
+┌─────────────────────────────────────────┐
+│  Vercel (무료 티어)                       │
+│  ├── Static Hosting (프론트엔드)          │
+│  ├── Serverless Functions (API)         │
+│  └── Vercel KV (Redis 스토리지)          │
+└─────────────────────────────────────────┘
+```
+
 ### Frontend
 - **HTML5 / CSS3 / JavaScript (ES6+)**
 - **Vite** - 빌드 도구
-- **Vanilla JS** 또는 **Preact** (가벼운 프레임워크)
+- **Vanilla JS** - 의존성 최소화
 
-### Backend (선택)
-- **Supabase** - BaaS (추천)
-  - PostgreSQL 기반
-  - 실시간 구독 기능 내장
-  - 인증 기능 (선택적)
-- 또는 **Firebase** - BaaS
-  - Firestore 실시간 DB
-  - 무료 티어 충분
+### Backend (Vercel Serverless)
+- **Vercel Serverless Functions** - API 엔드포인트
+  - `POST /api/polls` - 투표 생성
+  - `GET /api/polls/:id` - 투표 조회
+  - `POST /api/polls/:id/vote` - 투표 참여
+  - `GET /api/polls/:id/results` - 결과 조회
+- **Vercel KV** - Redis 기반 데이터 저장
+  - 서버 관리 불필요
+  - 무료 티어: 3,000 요청/일, 256MB
 
-### MVP 대안 (서버리스)
-- **LocalStorage + URL 해시**
-  - 투표 데이터를 URL에 인코딩
-  - 실시간 동기화 불가하지만 MVP로는 충분
-  - 예: `meet.ing/#data=eyJ0aXRsZSI6Ii4uLiJ9`
+### 작동 방식
+```
+1. 주최자: 투표 생성 → Vercel KV에 저장 → 고유 링크 생성
+   https://meet.app/p/abc123
+
+2. 참여자: 링크 클릭 → 투표 → Vercel KV에 저장
+
+3. 누구나: 같은 링크에서 실시간 결과 확인
+   (새로고침하면 최신 결과 표시)
+```
 
 ### 배포
-- **Vercel** 또는 **Netlify** (무료)
-- 커스텀 도메인 연결
+- **Vercel** (무료)
+  - GitHub 연동으로 자동 배포
+  - `git push`하면 끝
 
 ### 외부 API
 - **Kakao SDK** - 카카오톡 공유 (Phase 2)
-- **Google Calendar API** - 캘린더 연동 (Phase 3)
+- **Web Share API** - 시스템 공유 기능
+
+### 무료 티어 한도 (충분함)
+| 서비스 | 무료 한도 | 예상 사용량 |
+|--------|----------|------------|
+| Vercel Hosting | 100GB 대역폭/월 | 매우 여유 |
+| Serverless Functions | 100GB-hours/월 | 매우 여유 |
+| Vercel KV | 3,000 요청/일 | 투표 100개/일 가능 |
 
 ---
 
-## 데이터 모델
+## 데이터 모델 (Vercel KV)
 
-### Poll (투표)
+### URL 구조
+```
+https://meet.app/p/{pollId}
+
+예: https://meet.app/p/abc123
+```
+
+### Poll (투표) - KV Key: `poll:{id}`
 ```javascript
 {
-  id: "abc123",              // 고유 ID
-  title: "팀 회식 일정",       // 투표 제목
-  creator: "홍길동",          // 주최자 이름
+  id: "abc123",
+  title: "팀 회식 일정",
+  creator: "홍길동",
   createdAt: "2025-12-05T10:00:00Z",
-  status: "open",            // open | closed | confirmed
+  status: "open",  // open | closed
 
   // 날짜/시간 옵션
   timeOptions: [
-    { id: "t1", datetime: "2025-12-09T19:00:00" },
-    { id: "t2", datetime: "2025-12-10T19:00:00" },
-    { id: "t3", datetime: "2025-12-11T19:00:00" }
+    "12/9(월) 19:00",
+    "12/10(화) 19:00",
+    "12/11(수) 19:00"
   ],
 
   // 장소 옵션 (선택)
-  locationOptions: [
-    { id: "l1", name: "강남역" },
-    { id: "l2", name: "역삼역" }
-  ],
-
-  // 확정 결과
-  confirmedTime: null,       // 확정된 시간 옵션 ID
-  confirmedLocation: null    // 확정된 장소 옵션 ID
+  locationOptions: ["강남역", "역삼역"]
 }
 ```
 
-### Vote (투표 참여)
+### Votes (투표 목록) - KV Key: `votes:{pollId}`
 ```javascript
-{
-  pollId: "abc123",          // 투표 ID
-  participantName: "김철수",  // 참여자 이름
-  votedAt: "2025-12-05T11:00:00Z",
+[
+  {
+    name: "김철수",
+    selectedTimes: [1, 2],      // 옵션 인덱스
+    selectedLocations: [0],
+    votedAt: "2025-12-05T11:00:00Z"
+  },
+  {
+    name: "이영희",
+    selectedTimes: [0, 1],
+    selectedLocations: [0, 1],
+    votedAt: "2025-12-05T11:05:00Z"
+  }
+]
+```
 
-  // 선택한 옵션들
-  selectedTimes: ["t2", "t3"],
-  selectedLocations: ["l1"]
+### API 응답 예시
+```javascript
+// GET /api/polls/abc123/results
+{
+  poll: { ... },
+  votes: [ ... ],
+  summary: {
+    totalVotes: 5,
+    timeResults: [
+      { option: "12/9(월) 19:00", count: 2, voters: ["홍길동", "김철수"] },
+      { option: "12/10(화) 19:00", count: 4, voters: ["홍길동", "김철수", "이영희", "박지민"] },
+      { option: "12/11(수) 19:00", count: 3, voters: ["김철수", "이영희", "박지민"] }
+    ],
+    locationResults: [
+      { option: "강남역", count: 4, voters: [...] },
+      { option: "역삼역", count: 2, voters: [...] }
+    ]
+  }
 }
 ```
 

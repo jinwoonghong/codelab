@@ -8,16 +8,17 @@
 
 ### 주요 특징
 - **간편한 투표 생성**: 3단계만에 투표 링크 생성
+- **실시간 집계**: 투표하면 바로 결과에 반영
+- **서버 관리 불필요**: Vercel 서버리스로 자동 운영
 - **모바일 최적화**: 터치 친화적인 UI/UX
-- **실시간 결과**: 참여자 투표 현황 실시간 확인
-- **익명 투표**: 선택적 익명 투표 지원
-- **카카오톡 최적화**: 링크 공유 시 예쁜 미리보기 카드
+- **무료 운영**: Vercel 무료 티어로 충분
 
 ## 기술 스택
 
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **데이터 저장**: Supabase / Firebase (또는 LocalStorage for MVP)
-- **배포**: Vercel / Netlify
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+), Vite
+- **Backend**: Vercel Serverless Functions
+- **Database**: Vercel KV (Redis)
+- **배포**: Vercel (자동 배포)
 
 ## 시작하기
 
@@ -49,10 +50,10 @@ npm run dev
 
 ### Phase 1: MVP (필수 기능)
 - [ ] 투표 생성 (날짜/시간/장소 옵션)
-- [ ] 투표 링크 공유
+- [ ] 투표 링크 생성 및 공유
 - [ ] 투표 참여 (이름 입력 + 선택)
 - [ ] 실시간 투표 결과 확인
-- [ ] 투표 마감 및 결과 확정
+- [ ] 투표 마감 기능
 
 ### Phase 2: 고급 기능
 - [ ] 카카오톡 공유 API 연동
